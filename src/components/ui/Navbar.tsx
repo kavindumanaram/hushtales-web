@@ -17,7 +17,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
-  if (pathname === '/library') return null;
+  if (pathname === '/library' || pathname === '/home1') return null;
 
   return (
     <nav className="sticky top-0 z-50 bg-[#0f0f0f]/90 backdrop-blur border-b border-white/10">

@@ -126,8 +126,8 @@ function Navbar({ scrolled }: { scrolled: boolean }) {
           <span className="text-xl font-semibold text-white/90 tracking-tight group-hover:text-white transition-colors">
             HushTales
           </span>
-          <span className="text-xs font-semibold text-[#818cf8] bg-[#4f46e5]/20 border border-[#4f46e5]/30 px-2 py-0.5 rounded-full tracking-widest uppercase">
-            original
+          <span className="text-xs font-semibold text-amber-400 bg-amber-400/10 border border-amber-400/30 px-2 py-0.5 rounded-full tracking-widest uppercase">
+            Home 2
           </span>
         </Link>
 
