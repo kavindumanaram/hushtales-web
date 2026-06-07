@@ -137,7 +137,7 @@ function KidsNavbar({ age, setAge }: { age: AgeKey; setAge: (a: AgeKey) => void 
       <div className="max-w-7xl mx-auto px-5 py-3 flex items-center gap-4 flex-wrap">
 
         {/* Logo */}
-        <Link href="/library" className="flex items-center gap-2 shrink-0 mr-2">
+        <Link href="/library" className="flex items-center gap-2 shrink-0">
           <span className="text-2xl">📚</span>
           <div className="leading-none">
             <span className="text-lg font-black" style={{ background: 'linear-gradient(90deg,#FF6B9D,#9B5DE5,#00B4D8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
@@ -147,16 +147,40 @@ function KidsNavbar({ age, setAge }: { age: AgeKey; setAge: (a: AgeKey) => void 
           </div>
         </Link>
 
+        {/* Main nav — same 3 items as global navbar */}
+        <div className="flex items-center gap-1">
+          {([
+            { href: '/home1',   label: 'Home 1'  },
+            { href: '/library', label: 'Home 2'  },
+            { href: '/kids',    label: '🐨 Kids' },
+          ] as const).map(({ href, label }) => (
+            <Link
+              key={href}
+              href={href}
+              className={`px-3.5 py-1.5 rounded-full text-sm font-bold transition-all duration-200 ${
+                href === '/kids'
+                  ? 'bg-[#9B5DE5] text-white shadow-md'
+                  : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'
+              }`}
+            >
+              {label}
+            </Link>
+          ))}
+        </div>
+
+        {/* Divider */}
+        <div className="hidden sm:block w-px h-6 bg-gray-200" />
+
         {/* Age filter chips */}
-        <div className="flex items-center gap-2 flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
           {AGE_GROUPS.map((g) => (
             <button
               key={g.key}
               onClick={() => setAge(g.key)}
-              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-bold transition-all duration-200 ${
+              className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold transition-all duration-200 ${
                 age === g.key
-                  ? 'bg-[#9B5DE5] text-white shadow-md scale-105'
-                  : 'bg-gray-100 text-gray-600 hover:bg-purple-100 hover:text-purple-700'
+                  ? 'bg-amber-400 text-black shadow scale-105'
+                  : 'bg-gray-100 text-gray-500 hover:bg-yellow-100 hover:text-yellow-700'
               }`}
             >
               <span>{g.emoji}</span>
@@ -165,10 +189,12 @@ function KidsNavbar({ age, setAge }: { age: AgeKey; setAge: (a: AgeKey) => void 
           ))}
         </div>
 
+        <div className="flex-1" />
+
         {/* Parent zone */}
         <Link
           href="/library"
-          className="shrink-0 flex items-center gap-2 bg-gray-800 text-white text-xs font-bold px-4 py-2 rounded-full hover:bg-gray-700 transition-colors"
+          className="shrink-0 flex items-center gap-1.5 bg-gray-800 text-white text-xs font-bold px-4 py-2 rounded-full hover:bg-gray-700 transition-colors"
         >
           🔒 Parent Zone
         </Link>

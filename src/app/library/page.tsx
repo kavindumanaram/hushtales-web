@@ -131,20 +131,25 @@ function Navbar({ scrolled }: { scrolled: boolean }) {
           </span>
         </Link>
 
-        {/* Nav links */}
+        {/* Nav links — same 3 items as global navbar */}
         <div className="hidden lg:flex items-center gap-1 ml-4">
-          <Link href="/library" className="px-3.5 py-1.5 rounded-full text-sm font-medium text-white bg-white/10">
-            Home 2
-          </Link>
-          <Link href="/home1" className="px-3.5 py-1.5 rounded-full text-sm font-medium text-white/55 hover:text-white hover:bg-white/10 transition-colors">
-            Home 1
-          </Link>
-          <Link
-            href="/kids"
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-bold bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:from-pink-400 hover:to-purple-400 transition-all ml-2 shadow-md"
-          >
-            🐨 Kids Zone
-          </Link>
+          {([
+            { href: '/home1',   label: 'Home 1'  },
+            { href: '/library', label: 'Home 2'  },
+            { href: '/kids',    label: '🐨 Kids' },
+          ] as const).map(({ href, label }) => (
+            <Link
+              key={href}
+              href={href}
+              className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                href === '/library'
+                  ? 'text-white bg-white/10'
+                  : 'text-white/55 hover:text-white hover:bg-white/10'
+              }`}
+            >
+              {label}
+            </Link>
+          ))}
         </div>
 
         <div className="flex-1" />

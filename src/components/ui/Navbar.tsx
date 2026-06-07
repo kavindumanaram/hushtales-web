@@ -6,8 +6,9 @@ import { useState } from 'react';
 import { Menu, X, BookOpen } from 'lucide-react';
 
 const links = [
-  { href: '/home1', label: 'Home 1' },
+  { href: '/home1',   label: 'Home 1' },
   { href: '/library', label: 'Home 2' },
+  { href: '/kids',    label: '🐨 Kids' },
 ];
 
 export default function Navbar() {
