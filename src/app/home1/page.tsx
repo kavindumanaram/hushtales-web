@@ -4,28 +4,22 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 
-// ── Figma assets (valid 7 days — fetched 2026-06-07) ──────────────────────────
+// ── Local assets ──────────────────────────────────────────────────────────────
 const IMG = {
-  heroBg:   'https://www.figma.com/api/mcp/asset/865cd1ea-1eeb-479a-b4ee-c182ecd9b671',
-  showLogo: 'https://www.figma.com/api/mcp/asset/c93ca00c-d3c4-4198-8554-83089b35b11d',
-  imdb:     'https://www.figma.com/api/mcp/asset/02239bb1-e0a4-47b2-878f-c94900387540',
-  netN:     'https://www.figma.com/api/mcp/asset/3efd0c2d-b273-4b55-875c-2995611b6a00',
-  p1: 'https://www.figma.com/api/mcp/asset/43da5829-0d13-41b7-a6e9-ebcd7c9c2138',
-  p2: 'https://www.figma.com/api/mcp/asset/758daa74-baca-4285-8fc3-1b30095aa10e',
-  p3: 'https://www.figma.com/api/mcp/asset/27432a0d-b5f5-4563-aba8-8e6f99dfcd8d',
-  p4: 'https://www.figma.com/api/mcp/asset/c9252f18-648c-426b-b441-3ca3941d5d21',
-  p5: 'https://www.figma.com/api/mcp/asset/6c7f41ad-aea5-4cb4-bad6-200619f81702',
-  p6: 'https://www.figma.com/api/mcp/asset/1fdf3897-2565-461c-af4c-ae43423a49bc',
-  p7: 'https://www.figma.com/api/mcp/asset/12524290-9fe6-4145-ba01-fb7cf29f3b4a',
-  p8: 'https://www.figma.com/api/mcp/asset/241dfb95-9097-4d01-92cc-a42409b99d75',
-  t1: 'https://www.figma.com/api/mcp/asset/df0a8b93-a2ad-4348-947f-2210ead9c29d',
-  t2: 'https://www.figma.com/api/mcp/asset/05361084-3a3f-441d-962e-91cb152bfc6f',
-  t3: 'https://www.figma.com/api/mcp/asset/0bc0c6de-9483-4b0e-b5e4-67870dc05e7c',
-  t4: 'https://www.figma.com/api/mcp/asset/11ce9370-0a26-4fda-9353-00752528645a',
-  t5: 'https://www.figma.com/api/mcp/asset/dadcd748-53d6-4d52-b40b-abd4a4f677db',
-  t6: 'https://www.figma.com/api/mcp/asset/d19ab1f3-2417-4d78-91ee-59de095c310b',
-  t7: 'https://www.figma.com/api/mcp/asset/12a7fa4a-332f-4a92-b018-9f5652e0e463',
-  t8: 'https://www.figma.com/api/mcp/asset/341c710c-fcb2-443c-b942-38d9512409f6',
+  // Banners (landscape) — hero backgrounds
+  b1: '/images/banners/banner1.jpeg',
+  b2: '/images/banners/banner2.jpeg',
+  b3: '/images/banners/banner3.jpeg',
+  b4: '/images/banners/banner4.jpeg',
+  b5: '/images/banners/banner5.jpeg',
+  b6: '/images/banners/banner6.jpeg',
+  // Posters (portrait) — card thumbnails
+  p1: '/images/posters/poster1.jpeg',
+  p2: '/images/posters/poster2.jpeg',
+  p3: '/images/posters/poster3.jpeg',
+  p4: '/images/posters/poster4.jpeg',
+  p5: '/images/posters/poster5.jpeg',
+  p6: '/images/posters/poster6.jpeg',
 } as const;
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -35,56 +29,59 @@ type HeroSlide = { id: string; bg: string; logo?: string; title?: string; subtit
 
 const HERO: HeroSlide[] = [
   {
-    id: 'h1', bg: IMG.heroBg, logo: IMG.showLogo,
-    subtitle: 'PART 4',
-    genre: 'Action · Thriller · Crime',
-    year: '2021', seasons: '4 Seasons', rating: '8.8', streams: '2B+',
-    desc: 'Eight thieves take hostages in the Royal Mint of Spain as a criminal mastermind manipulates the police from the outside.',
+    id: 'h1', bg: IMG.b6,
+    title: 'The Moonlight Explorer',
+    subtitle: 'HUSHTALES ORIGINAL',
+    genre: 'Adventure · Fantasy · Family',
+    year: '2026', rating: '9.2', streams: '12M+',
+    desc: 'Ellie the elephant embarks on a magical journey through glowing forests, guided by moonlight and the warmth of friendship.',
   },
   {
-    id: 'h2', bg: IMG.p6, title: 'The Irishman',
-    subtitle: 'DIRECTOR\'S CUT',
-    genre: 'Crime · Drama · Biography',
-    year: '2019', rating: '7.8', streams: '480M+',
-    desc: 'An aging hitman recalls his time with the mob and his alleged involvement with the slaying of Jimmy Hoffa.',
+    id: 'h2', bg: IMG.b4,
+    title: "Barnaby's Glowing Adventure",
+    subtitle: 'SEASON 1 · NOW STREAMING',
+    genre: 'Fantasy · Kids · Adventure',
+    year: '2026', rating: '8.8', streams: '8M+',
+    desc: 'Armed with a lantern and a curious heart, Barnaby the bunny discovers glowing mushrooms and enchanted castles hidden in the night forest.',
   },
   {
-    id: 'h3', bg: IMG.p4, title: 'The Perfection',
-    subtitle: 'NETFLIX ORIGINAL',
-    genre: 'Horror · Thriller',
-    year: '2018', rating: '6.3', streams: '350M+',
-    desc: 'A troubled musical prodigy seeks out the new star pupil of her former mentor, sending both musicians down a sinister path.',
+    id: 'h3', bg: IMG.b3,
+    title: "Little Joey's Forest Friends",
+    subtitle: 'BEDTIME STORY SERIES',
+    genre: 'Nature · Family · Australian',
+    year: '2026', rating: '8.5', streams: '5M+',
+    desc: 'A gentle joey discovers new friends across the Australian bush — from sleepy koalas to caring kangaroo families.',
   },
 ];
 
 const CONTINUE: Show[] = [
-  { id: 'cw1', title: 'Money Heist',       year: '2021', duration: '48 min',  rating: '8.8', genre: 'Action',  age: 'TV-MA', thumb: IMG.p1, progress: 72 },
-  { id: 'cw2', title: 'Blockbuster',        year: '2022', duration: '32 min',  rating: '6.1', genre: 'Comedy',  age: 'TV-14', thumb: IMG.p2, progress: 45 },
-  { id: 'cw3', title: 'RRR',                year: '2022', duration: '3h 7min', rating: '7.8', genre: 'Action',  age: 'TV-14', thumb: IMG.p3, progress: 21 },
-  { id: 'cw4', title: 'Extraction',         year: '2020', duration: '1h 56m',  rating: '6.7', genre: 'Action',  age: 'TV-MA', thumb: IMG.p5, progress: 88 },
-  { id: 'cw5', title: 'Jagame Thandhiram',  year: '2021', duration: '2h 28m',  rating: '7.0', genre: 'Action',  age: 'TV-14', thumb: IMG.t5, progress: 60 },
+  { id: 'cw1', title: "Barnaby's Glowing Adventure", year: '2026', duration: '24 min', rating: '9.2', genre: 'Fantasy',   age: 'G', thumb: IMG.p1, progress: 72 },
+  { id: 'cw2', title: "Barnaby's Quest",             year: '2026', duration: '22 min', rating: '8.8', genre: 'Adventure', age: 'G', thumb: IMG.p2, progress: 45 },
+  { id: 'cw3', title: 'The Luna Kingdom',            year: '2026', duration: '26 min', rating: '8.6', genre: 'Fantasy',   age: 'G', thumb: IMG.p3, progress: 21 },
+  { id: 'cw4', title: 'The Magical Seas',            year: '2026', duration: '28 min', rating: '8.4', genre: 'Adventure', age: 'G', thumb: IMG.p4, progress: 88 },
+  { id: 'cw5', title: "Captain Luna's Voyage",       year: '2026', duration: '25 min', rating: '8.2', genre: 'Pirates',   age: 'G', thumb: IMG.p5, progress: 60 },
 ];
 
 const NEW_WEEK: Show[] = [
-  { id: 'nw1', title: 'The Mother',    year: '2023', duration: '1h 55m', rating: '5.7', genre: 'Action',  age: 'TV-MA', thumb: IMG.p1 },
-  { id: 'nw2', title: 'Blockbuster',   year: '2022', duration: '32 min', rating: '6.1', genre: 'Comedy',  age: 'TV-14', thumb: IMG.p2 },
-  { id: 'nw3', title: 'RRR',           year: '2022', duration: '3h 7m',  rating: '7.8', genre: 'Action',  age: 'TV-14', thumb: IMG.p3 },
-  { id: 'nw4', title: 'The Perfection',year: '2018', duration: '1h 30m', rating: '6.3', genre: 'Thriller',age: 'TV-MA', thumb: IMG.p4 },
-  { id: 'nw5', title: 'Extraction',    year: '2020', duration: '1h 56m', rating: '6.7', genre: 'Action',  age: 'TV-MA', thumb: IMG.p5 },
-  { id: 'nw6', title: 'The Irishman',  year: '2019', duration: '3h 29m', rating: '7.8', genre: 'Crime',   age: 'TV-MA', thumb: IMG.p6 },
-  { id: 'nw7', title: 'Jagame',        year: '2021', duration: '2h 28m', rating: '7.0', genre: 'Action',  age: 'TV-14', thumb: IMG.p7 },
-  { id: 'nw8', title: 'We Were There', year: '2022', duration: '1h 45m', rating: '7.2', genre: 'Drama',   age: 'TV-14', thumb: IMG.p8 },
+  { id: 'nw1', title: "Barnaby's Glowing Adventure", year: '2026', duration: '24 min', rating: '9.2', genre: 'Fantasy',   age: 'G', thumb: IMG.p1 },
+  { id: 'nw2', title: "Barnaby's Quest",             year: '2026', duration: '22 min', rating: '8.8', genre: 'Adventure', age: 'G', thumb: IMG.p2 },
+  { id: 'nw3', title: 'The Luna Kingdom',            year: '2026', duration: '26 min', rating: '8.6', genre: 'Fantasy',   age: 'G', thumb: IMG.p3 },
+  { id: 'nw4', title: 'The Magical Seas',            year: '2026', duration: '28 min', rating: '8.4', genre: 'Adventure', age: 'G', thumb: IMG.p4 },
+  { id: 'nw5', title: "Captain Luna's Voyage",       year: '2026', duration: '25 min', rating: '8.2', genre: 'Pirates',   age: 'G', thumb: IMG.p5 },
+  { id: 'nw6', title: "Aetheria's Skies",            year: '2026', duration: '30 min', rating: '8.9', genre: 'Fantasy',   age: 'G', thumb: IMG.p6 },
+  { id: 'nw7', title: 'Moonlit Forest',              year: '2026', duration: '20 min', rating: '8.1', genre: 'Nature',    age: 'G', thumb: IMG.p1 },
+  { id: 'nw8', title: 'Dragon Riders',               year: '2026', duration: '22 min', rating: '8.3', genre: 'Fantasy',   age: 'G', thumb: IMG.p2 },
 ];
 
 const TRENDING: Show[] = [
-  { id: 'tr1', title: 'Night Crawler',  year: '2021', duration: '45 min', rating: '8.1', genre: 'Drama',   age: 'TV-14', thumb: IMG.t1 },
-  { id: 'tr2', title: 'Sweet Home',     year: '2020', duration: '53 min', rating: '7.4', genre: 'Horror',  age: 'TV-MA', thumb: IMG.t2 },
-  { id: 'tr3', title: 'Kingdom',        year: '2019', duration: '45 min', rating: '8.4', genre: 'Thriller',age: 'TV-MA', thumb: IMG.t3 },
-  { id: 'tr4', title: 'D.P.',           year: '2021', duration: '38 min', rating: '8.0', genre: 'Drama',   age: 'TV-MA', thumb: IMG.t4 },
-  { id: 'tr5', title: 'Squid Game',     year: '2021', duration: '56 min', rating: '8.0', genre: 'Thriller',age: 'TV-MA', thumb: IMG.t5 },
-  { id: 'tr6', title: 'Hellbound',      year: '2021', duration: '1h 5m',  rating: '6.7', genre: 'Horror',  age: 'TV-MA', thumb: IMG.t6 },
-  { id: 'tr7', title: 'All of Us',      year: '2022', duration: '52 min', rating: '7.6', genre: 'Action',  age: 'TV-MA', thumb: IMG.t7 },
-  { id: 'tr8', title: 'Signal',         year: '2016', duration: '60 min', rating: '8.6', genre: 'Crime',   age: 'TV-14', thumb: IMG.t8 },
+  { id: 'tr1', title: "Aetheria's Skies",            year: '2026', duration: '30 min', rating: '8.9', genre: 'Fantasy',   age: 'G', thumb: IMG.p6 },
+  { id: 'tr2', title: 'The Magical Seas',            year: '2026', duration: '28 min', rating: '8.4', genre: 'Adventure', age: 'G', thumb: IMG.p4 },
+  { id: 'tr3', title: 'The Luna Kingdom',            year: '2026', duration: '26 min', rating: '8.6', genre: 'Fantasy',   age: 'G', thumb: IMG.p3 },
+  { id: 'tr4', title: "Barnaby's Glowing Adventure", year: '2026', duration: '24 min', rating: '9.2', genre: 'Fantasy',   age: 'G', thumb: IMG.p1 },
+  { id: 'tr5', title: "Captain Luna's Voyage",       year: '2026', duration: '25 min', rating: '8.2', genre: 'Pirates',   age: 'G', thumb: IMG.p5 },
+  { id: 'tr6', title: "Barnaby's Quest",             year: '2026', duration: '22 min', rating: '8.8', genre: 'Adventure', age: 'G', thumb: IMG.p2 },
+  { id: 'tr7', title: 'The Night Journey',           year: '2026', duration: '22 min', rating: '8.0', genre: 'Nature',    age: 'G', thumb: IMG.p3 },
+  { id: 'tr8', title: 'Dragon Friends',              year: '2026', duration: '28 min', rating: '8.7', genre: 'Fantasy',   age: 'G', thumb: IMG.p6 },
 ];
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -324,44 +321,21 @@ function HeroSection({
 
         {/* Badge */}
         <div className="flex items-center gap-2 mb-4">
-          {slide.logo ? (
-            <>
-              <img src={IMG.netN} alt="N" className="w-4 h-5 object-contain" />
-              <span className="text-[#b9bbb9] text-[11px] tracking-[0.35em] uppercase font-semibold">SERIES</span>
-            </>
-          ) : (
-            <span className="text-xs tracking-[0.2em] uppercase font-bold text-amber-400 bg-amber-400/10 border border-amber-400/25 px-3 py-1 rounded-full">
-              HushTales Original
-            </span>
-          )}
+          <span className="text-xs tracking-[0.2em] uppercase font-bold text-amber-400 bg-amber-400/10 border border-amber-400/25 px-3 py-1 rounded-full">
+            HushTales Original
+          </span>
         </div>
 
         {/* Title */}
-        {slide.logo ? (
-          <img
-            src={slide.logo}
-            alt="show title"
-            className="object-contain object-left mb-2"
-            style={{ height: 140, mixBlendMode: 'screen' }}
-          />
-        ) : (
-          <h1 className="text-5xl sm:text-6xl font-black text-white leading-none tracking-tight mb-2">
-            {slide.title}
-          </h1>
-        )}
+        <h1 className="text-5xl sm:text-6xl font-black text-white leading-none tracking-tight mb-2">
+          {slide.title}
+        </h1>
 
         {/* Subtitle */}
         <p className="text-white/50 text-xs tracking-[0.3em] uppercase mb-4">{slide.subtitle}</p>
 
         {/* Metadata */}
         <div className="flex items-center gap-2.5 mb-3 flex-wrap">
-          {slide.id === 'h1' && (
-            <>
-              <img src={IMG.imdb} alt="IMDb" className="h-[18px] object-contain" />
-              <span className="text-white font-semibold text-sm">{slide.rating}/10</span>
-              <span className="w-1 h-1 bg-white/30 rounded-full" />
-            </>
-          )}
           <span className={`text-sm font-semibold ${parseFloat(slide.rating) >= 7.5 ? 'text-green-400' : parseFloat(slide.rating) >= 6 ? 'text-amber-400' : 'text-white/60'}`}>
             ★ {slide.rating}
           </span>

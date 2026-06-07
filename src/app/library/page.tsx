@@ -6,14 +6,11 @@ import Link from 'next/link';
 
 // ─── Assets ───────────────────────────────────────────────────────────────────
 const A = {
-  heroBg:    'https://www.figma.com/api/mcp/asset/623e1b7e-7cde-49f5-aa3a-bb6532351c6d',
-  avatar:    'https://www.figma.com/api/mcp/asset/001cad2c-13ef-4e7e-bd61-3ea9006a9400',
-  showTitle: 'https://www.figma.com/api/mcp/asset/8e49b43c-8284-48ff-b955-a83b1329e4af',
-  logoIcon:  'https://www.figma.com/api/mcp/asset/e5cf3592-214a-4cea-8bc5-e4868d24875a',
-  iconSearch:'https://www.figma.com/api/mcp/asset/ec406cd0-4607-49a4-a95f-be5780dd6771',
-  iconGear:  'https://www.figma.com/api/mcp/asset/f5d38c21-cb3c-40d0-8fea-9b7da11e8112',
-  iconBell:  'https://www.figma.com/api/mcp/asset/3ed23f07-60e9-4b58-a35e-fb1d846d3ff0',
-  iconPlay:  'https://www.figma.com/api/mcp/asset/385d96ca-3082-41e9-9229-34c0de434a2d',
+  heroBg: '/images/banners/banner6.jpeg',
+  ep1:    '/images/banners/banner2.jpeg',
+  ep2:    '/images/banners/banner3.jpeg',
+  ep3:    '/images/banners/banner4.jpeg',
+  ep4:    '/images/banners/banner5.jpeg',
 } as const;
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
@@ -25,28 +22,28 @@ type Episode = {
 
 const ALL_EPISODES: Episode[] = [
   {
-    id: 'e1', number: 'E1', season: 1, duration: '48:23', progress: 100,
-    title: 'The Handmaidens',
-    description: 'Offred arrives at the Commander\'s home and begins her dangerous life as a Handmaid in the oppressive theocratic regime of Gilead.',
-    thumbnail: 'https://www.figma.com/api/mcp/asset/2bc1ca07-2609-408d-afd9-6cb1ad5a2815',
+    id: 'e1', number: 'E1', season: 1, duration: '22:00', progress: 100,
+    title: 'The First Morning',
+    description: 'Daisy the fawn wakes up in the magical forest for the very first time and meets a sleepy koala named Max up in the gum tree.',
+    thumbnail: A.ep1,
   },
   {
-    id: 'e2', number: 'E2', season: 1, duration: '51:10', progress: 62,
-    title: 'The Handmaidens Origins',
-    description: 'Offred recalls her life before Gilead — her relationship with Luke and how the world she knew was taken from her piece by piece.',
-    thumbnail: 'https://www.figma.com/api/mcp/asset/5112773e-795a-451d-8840-1b1bbbb2cc7f',
+    id: 'e2', number: 'E2', season: 1, duration: '24:15', progress: 62,
+    title: 'A New Family',
+    description: 'Daisy discovers a kangaroo family resting in the sun-dappled clearing and learns what it means to share and belong.',
+    thumbnail: A.ep2,
   },
   {
-    id: 'e3', number: 'E3', season: 1, duration: '55:42', progress: 0,
-    title: 'Death Of Handmaiden',
-    description: 'A disturbing execution ritual forces the Handmaids to confront the brutality of Gilead. Offred encounters a familiar face.',
-    thumbnail: 'https://www.figma.com/api/mcp/asset/8a51b80f-0edf-44fa-bc8a-6ac620c4821c',
+    id: 'e3', number: 'E3', season: 1, duration: '21:30', progress: 0,
+    title: 'Dreamtime',
+    description: 'As the moon rises over the great tree, Daisy curls up and drifts into a dream filled with fireflies and gentle whispers.',
+    thumbnail: A.ep3,
   },
   {
-    id: 'e4', number: 'E4', season: 1, duration: '49:55', progress: 0,
-    title: 'Reborn of Handmaidens',
-    description: 'The Commander breaks protocol by inviting Offred for a secret meeting. Nick warns her that she is being watched.',
-    thumbnail: 'https://www.figma.com/api/mcp/asset/89d4b2b1-2ec1-46a7-a6d1-b5c02ec7c211',
+    id: 'e4', number: 'E4', season: 1, duration: '23:45', progress: 0,
+    title: 'The Kookaburra\'s Song',
+    description: 'A kookaburra perched at twilight teaches Daisy the secret melody that brings all the animals of the bush together.',
+    thumbnail: A.ep4,
   },
 ];
 
@@ -55,7 +52,7 @@ const ALL_EPISODES: Episode[] = [
 function Logomark() {
   return (
     <div className="w-8 h-8 bg-[#4f46e5] rounded-xl border border-white/20 flex items-center justify-center shadow-[0_4px_16px_rgba(79,70,229,0.4)] shrink-0">
-      <img src={A.logoIcon} alt="" width={14} height={18} />
+      <span className="text-white font-black text-sm leading-none">H</span>
     </div>
   );
 }
@@ -156,21 +153,23 @@ function Navbar({ scrolled }: { scrolled: boolean }) {
 
         {/* Search */}
         <div className="hidden md:flex items-center gap-2.5 bg-white/8 hover:bg-white/12 border border-white/10 rounded-full px-4 py-2 w-52 cursor-text transition-colors group">
-          <img src={A.iconSearch} alt="" className="w-4 h-4 opacity-50 group-hover:opacity-70 transition-opacity" />
+          <svg className="w-4 h-4 opacity-50 group-hover:opacity-70 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
           <span className="text-sm text-white/40">Search stories…</span>
         </div>
 
         {/* Icons */}
         <div className="flex items-center gap-2">
           <button aria-label="Settings" className="w-9 h-9 rounded-full bg-white/8 hover:bg-white/15 flex items-center justify-center transition-colors">
-            <img src={A.iconGear} alt="" className="w-4 h-4 opacity-70" />
+            <svg className="w-4 h-4 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
           </button>
           <button aria-label="Notifications" className="w-9 h-9 rounded-full bg-white/8 hover:bg-white/15 flex items-center justify-center transition-colors relative">
-            <img src={A.iconBell} alt="" className="w-4 h-4 opacity-70" />
+            <svg className="w-4 h-4 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
             <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-[#4f46e5] rounded-full" />
           </button>
           <button aria-label="Profile" className="relative w-9 h-9 ml-1">
-            <img src={A.avatar} alt="Profile" className="w-full h-full rounded-full object-cover ring-2 ring-white/20 hover:ring-white/40 transition-all" />
+            <div className="w-full h-full rounded-full bg-gradient-to-br from-amber-400 to-amber-600 ring-2 ring-white/20 hover:ring-white/40 transition-all flex items-center justify-center">
+              <span className="text-black font-black text-xs">M</span>
+            </div>
             <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-[#0a0a0a]" />
           </button>
         </div>
@@ -203,39 +202,37 @@ function Hero({ onScrollClick }: { onScrollClick: () => void }) {
 
         {/* Genre tags */}
         <div className="flex items-center gap-2 mb-6 flex-wrap">
-          <Badge variant="glass">Sci-Fi</Badge>
+          <Badge variant="glass">Nature</Badge>
           <Badge variant="glass">Adventure</Badge>
-          <Badge variant="glass">Drama</Badge>
+          <Badge variant="glass">Family</Badge>
           <span className="text-white/30 text-xs mx-1">·</span>
-          <Badge variant="solid">TV-MA</Badge>
+          <Badge variant="solid">G · All Ages</Badge>
         </div>
 
         {/* Show title */}
         <div className="mb-5">
-          <img
-            src={A.showTitle}
-            alt="Handmaiden Tales"
-            className="h-16 w-auto object-contain object-left"
-            style={{ filter: 'drop-shadow(0 4px 24px rgba(0,0,0,0.6))' }}
-          />
+          <h1 className="text-5xl sm:text-6xl font-black text-white leading-none tracking-tight drop-shadow-2xl">
+            Daisy&apos;s Forest
+          </h1>
+          <p className="text-white/50 text-sm tracking-[0.2em] uppercase mt-2">A HushTales Original Series</p>
         </div>
 
         {/* Metadata row */}
         <div className="flex items-center gap-3 mb-5 text-sm text-white/60 font-medium">
-          <span className="text-emerald-400 font-semibold">98% Match</span>
+          <span className="text-emerald-400 font-semibold">99% Match</span>
           <span className="text-white/20">·</span>
-          <span>2017</span>
+          <span>2026</span>
           <span className="text-white/20">·</span>
-          <span>3 Seasons</span>
+          <span>1 Season</span>
           <span className="text-white/20">·</span>
-          <span>46 Episodes</span>
+          <span>4 Episodes</span>
         </div>
 
         {/* Description */}
         <p className="text-white/70 text-[15px] leading-relaxed mb-8 max-w-xl line-clamp-3">
-          In a totalitarian society built on a corrupted ideology, Offred is a Handmaid assigned to
-          bear children for an infertile couple. Facing brutality and loss, she clings to the
-          fragile hope of finding her daughter and reclaiming her freedom.
+          Follow Daisy the fawn on a gentle journey through the magical Australian bush — meeting
+          koalas, kangaroos and kookaburras — in a bedtime story series crafted to calm little minds
+          and spark big imaginations.
         </p>
 
         {/* CTA buttons */}
@@ -320,7 +317,7 @@ function EpisodeCard({ ep, isCurrent }: { ep: Episode; isCurrent: boolean }) {
         {/* Logo watermark */}
         <div className="absolute bottom-3 right-3 opacity-80">
           <div className="w-6 h-6 bg-[#4f46e5] rounded-lg flex items-center justify-center border border-white/20">
-            <img src={A.logoIcon} alt="" width={10} height={12} />
+            <span className="text-white font-black text-[9px]">H</span>
           </div>
         </div>
       </div>

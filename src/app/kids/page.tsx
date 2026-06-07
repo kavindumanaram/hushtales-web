@@ -4,26 +4,17 @@
 import { useState, useRef } from 'react';
 import Link from 'next/link';
 
-// ── Figma assets (valid 7 days — fetched 2026-06-07) ─────────────────────────
-const IMG = {
-  heroBg: 'https://www.figma.com/api/mcp/asset/865cd1ea-1eeb-479a-b4ee-c182ecd9b671',
-  p1: 'https://www.figma.com/api/mcp/asset/43da5829-0d13-41b7-a6e9-ebcd7c9c2138',
-  p2: 'https://www.figma.com/api/mcp/asset/758daa74-baca-4285-8fc3-1b30095aa10e',
-  p3: 'https://www.figma.com/api/mcp/asset/27432a0d-b5f5-4563-aba8-8e6f99dfcd8d',
-  p4: 'https://www.figma.com/api/mcp/asset/c9252f18-648c-426b-b441-3ca3941d5d21',
-  p5: 'https://www.figma.com/api/mcp/asset/6c7f41ad-aea5-4cb4-bad6-200619f81702',
-  p6: 'https://www.figma.com/api/mcp/asset/1fdf3897-2565-461c-af4c-ae43423a49bc',
-  p7: 'https://www.figma.com/api/mcp/asset/12524290-9fe6-4145-ba01-fb7cf29f3b4a',
-  p8: 'https://www.figma.com/api/mcp/asset/241dfb95-9097-4d01-92cc-a42409b99d75',
-  t1: 'https://www.figma.com/api/mcp/asset/df0a8b93-a2ad-4348-947f-2210ead9c29d',
-  t2: 'https://www.figma.com/api/mcp/asset/05361084-3a3f-441d-962e-91cb152bfc6f',
-  t3: 'https://www.figma.com/api/mcp/asset/0bc0c6de-9483-4b0e-b5e4-67870dc05e7c',
-  t4: 'https://www.figma.com/api/mcp/asset/11ce9370-0a26-4fda-9353-00752528645a',
-  t5: 'https://www.figma.com/api/mcp/asset/dadcd748-53d6-4d52-b40b-abd4a4f677db',
-  t6: 'https://www.figma.com/api/mcp/asset/d19ab1f3-2417-4d78-91ee-59de095c310b',
-  t7: 'https://www.figma.com/api/mcp/asset/12a7fa4a-332f-4a92-b018-9f5652e0e463',
-  t8: 'https://www.figma.com/api/mcp/asset/341c710c-fcb2-443c-b942-38d9512409f6',
-} as const;
+// ── Local assets ─────────────────────────────────────────────────────────────
+const P = [
+  '/images/posters/poster1.jpeg', // Barnaby's Glowing Adventure (lantern)
+  '/images/posters/poster2.jpeg', // Barnaby's Glowing Adventure (stick)
+  '/images/posters/poster3.jpeg', // The Luna Kingdom
+  '/images/posters/poster4.jpeg', // The Magical Seas
+  '/images/posters/poster5.jpeg', // Captain Luna's Voyage
+  '/images/posters/poster6.jpeg', // Aetheria's Skies
+] as const;
+// Cycle helper — pick poster by index mod 6
+const p = (i: number) => P[i % P.length];
 
 // ── Types & Data ─────────────────────────────────────────────────────────────
 type KidsShow = {
@@ -39,50 +30,50 @@ type KidsShow = {
 };
 
 const FEATURED: KidsShow = {
-  id: 'f1', title: "G'day, Little Explorer!", emoji: '🦘',
-  minAge: 0, duration: '22 min', tag: 'Australian Adventure',
-  thumb: IMG.t1, isNew: true,
+  id: 'f1', title: "Aetheria's Skies", emoji: '🐉',
+  minAge: 0, duration: '30 min', tag: 'Fantasy Adventure',
+  thumb: p(5), isNew: true,
 };
 
 const KEEP_WATCHING: KidsShow[] = [
-  { id: 'kw1', title: "G'day Sunshine",     emoji: '☀️', minAge: 0, duration: '22 min', tag: 'Feel Good',    thumb: IMG.t1, progress: 65 },
-  { id: 'kw2', title: 'Koala Kiddos',       emoji: '🐨', minAge: 3, duration: '18 min', tag: 'Animals',      thumb: IMG.t2, progress: 42 },
-  { id: 'kw3', title: 'Red Rock Rangers',   emoji: '🪃', minAge: 5, duration: '25 min', tag: 'Adventure',    thumb: IMG.p3, progress: 80 },
-  { id: 'kw4', title: "Little Joey's Journey", emoji: '🦘', minAge: 2, duration: '15 min', tag: 'Story Time', thumb: IMG.p7, progress: 30 },
-  { id: 'kw5', title: "Skippy's Big Day",   emoji: '🌟', minAge: 4, duration: '20 min', tag: 'Adventure',    thumb: IMG.t5, progress: 55 },
+  { id: 'kw1', title: "Barnaby's Glowing Adventure", emoji: '🐰', minAge: 0, duration: '24 min', tag: 'Fantasy',   thumb: p(0), progress: 65 },
+  { id: 'kw2', title: 'The Magical Seas',            emoji: '🚢', minAge: 3, duration: '28 min', tag: 'Adventure', thumb: p(3), progress: 42 },
+  { id: 'kw3', title: "Barnaby's Quest",             emoji: '🌙', minAge: 3, duration: '22 min', tag: 'Mystery',   thumb: p(1), progress: 80 },
+  { id: 'kw4', title: "Captain Luna's Voyage",       emoji: '⚓', minAge: 4, duration: '25 min', tag: 'Pirates',   thumb: p(4), progress: 30 },
+  { id: 'kw5', title: 'The Luna Kingdom',            emoji: '🏰', minAge: 4, duration: '26 min', tag: 'Fantasy',   thumb: p(2), progress: 55 },
 ];
 
 const AUSSIE_PICKS: KidsShow[] = [
-  { id: 'au1', title: "Matilda's Magic",      emoji: '✨', minAge: 4,  duration: '20 min', tag: 'Magic',       thumb: IMG.p1, isNew: true },
-  { id: 'au2', title: 'Blockbuster Bilby',    emoji: '🐾', minAge: 3,  duration: '15 min', tag: 'Animals',     thumb: IMG.p2 },
-  { id: 'au3', title: 'Red Dirt Roadtrip',    emoji: '🚗', minAge: 5,  duration: '28 min', tag: 'Travel',      thumb: IMG.p3 },
-  { id: 'au4', title: 'The Perfect Platypus', emoji: '🦆', minAge: 3,  duration: '18 min', tag: 'Funny',       thumb: IMG.p4, isNew: true },
-  { id: 'au5', title: 'Ocean Rescue',         emoji: '🐠', minAge: 5,  duration: '22 min', tag: 'Nature',      thumb: IMG.p5 },
-  { id: 'au6', title: 'The Big Wide World',   emoji: '🌏', minAge: 6,  duration: '30 min', tag: 'Explore',     thumb: IMG.p6 },
-  { id: 'au7', title: "Little Joey",          emoji: '🦘', minAge: 2,  duration: '12 min', tag: 'Cute',        thumb: IMG.p7 },
-  { id: 'au8', title: 'Friends Forever',      emoji: '💛', minAge: 4,  duration: '20 min', tag: 'Friendship',  thumb: IMG.p8 },
+  { id: 'au1', title: "Barnaby's Glowing Adventure", emoji: '🐰', minAge: 0, duration: '24 min', tag: 'Fantasy',   thumb: p(0), isNew: true },
+  { id: 'au2', title: "Barnaby's Quest",             emoji: '🌙', minAge: 3, duration: '22 min', tag: 'Mystery',   thumb: p(1) },
+  { id: 'au3', title: 'The Luna Kingdom',            emoji: '🏰', minAge: 4, duration: '26 min', tag: 'Fantasy',   thumb: p(2) },
+  { id: 'au4', title: 'The Magical Seas',            emoji: '🚢', minAge: 3, duration: '28 min', tag: 'Adventure', thumb: p(3), isNew: true },
+  { id: 'au5', title: "Captain Luna's Voyage",       emoji: '⚓', minAge: 4, duration: '25 min', tag: 'Pirates',   thumb: p(4) },
+  { id: 'au6', title: "Aetheria's Skies",            emoji: '🐉', minAge: 5, duration: '30 min', tag: 'Dragons',   thumb: p(5) },
+  { id: 'au7', title: 'Moonlit Forest',              emoji: '🌲', minAge: 2, duration: '20 min', tag: 'Nature',    thumb: p(0) },
+  { id: 'au8', title: 'Dragon Riders',               emoji: '🔥', minAge: 5, duration: '28 min', tag: 'Fantasy',   thumb: p(5) },
 ];
 
 const TOP_PICKS: KidsShow[] = [
-  { id: 'tp1', title: "G'day Sunshine",       emoji: '☀️', minAge: 0,  duration: '22 min', tag: 'Fan Fave',   thumb: IMG.t1, isNew: true },
-  { id: 'tp2', title: 'Counting Cockatoos',   emoji: '🦜', minAge: 2,  duration: '10 min', tag: 'Numbers',    thumb: IMG.t2 },
-  { id: 'tp3', title: 'Kingdom of the Bush',  emoji: '🌿', minAge: 6,  duration: '25 min', tag: 'Wild',       thumb: IMG.t3 },
-  { id: 'tp4', title: 'D Is for Dingo',       emoji: '🐕', minAge: 3,  duration: '12 min', tag: 'ABC',        thumb: IMG.t4, isNew: true },
-  { id: 'tp5', title: "Skippy's Big Day",     emoji: '🌟', minAge: 4,  duration: '20 min', tag: 'Adventure',  thumb: IMG.t5 },
-  { id: 'tp6', title: 'Reef Buddies',         emoji: '🐡', minAge: 4,  duration: '18 min', tag: 'Ocean',      thumb: IMG.t6 },
-  { id: 'tp7', title: 'All Together Now',     emoji: '🤝', minAge: 3,  duration: '15 min', tag: 'Friendship', thumb: IMG.t7 },
-  { id: 'tp8', title: 'Signal the Echidna',   emoji: '🦔', minAge: 5,  duration: '22 min', tag: 'Clever',     thumb: IMG.t8 },
+  { id: 'tp1', title: "Aetheria's Skies",            emoji: '🐉', minAge: 5, duration: '30 min', tag: 'Fan Fave',  thumb: p(5), isNew: true },
+  { id: 'tp2', title: 'The Magical Seas',            emoji: '🚢', minAge: 3, duration: '28 min', tag: 'Adventure', thumb: p(3) },
+  { id: 'tp3', title: 'The Luna Kingdom',            emoji: '🏰', minAge: 4, duration: '26 min', tag: 'Fantasy',   thumb: p(2) },
+  { id: 'tp4', title: "Barnaby's Glowing Adventure", emoji: '🐰', minAge: 0, duration: '24 min', tag: 'Magic',     thumb: p(0), isNew: true },
+  { id: 'tp5', title: "Captain Luna's Voyage",       emoji: '⚓', minAge: 4, duration: '25 min', tag: 'Pirates',   thumb: p(4) },
+  { id: 'tp6', title: "Barnaby's Quest",             emoji: '🌙', minAge: 3, duration: '22 min', tag: 'Mystery',   thumb: p(1) },
+  { id: 'tp7', title: 'Ocean Rescue',                emoji: '🐠', minAge: 4, duration: '22 min', tag: 'Ocean',     thumb: p(3) },
+  { id: 'tp8', title: 'Sky Dragons',                 emoji: '🌈', minAge: 5, duration: '28 min', tag: 'Fantasy',   thumb: p(5) },
 ];
 
 const LEARN_PLAY: KidsShow[] = [
-  { id: 'lp1', title: 'Maths with Mammals',   emoji: '🔢', minAge: 4,  duration: '12 min', tag: 'Maths',      thumb: IMG.p2 },
-  { id: 'lp2', title: 'Counting Cockatoos',   emoji: '🦜', minAge: 2,  duration: '10 min', tag: 'Numbers',    thumb: IMG.t2 },
-  { id: 'lp3', title: 'Colour the Outback',   emoji: '🎨', minAge: 3,  duration: '15 min', tag: 'Art',        thumb: IMG.p3, isNew: true },
-  { id: 'lp4', title: 'D Is for Dingo',       emoji: '🐕', minAge: 3,  duration: '12 min', tag: 'Letters',    thumb: IMG.t4 },
-  { id: 'lp5', title: 'Science with Stevo',   emoji: '🔬', minAge: 7,  duration: '20 min', tag: 'Science',    thumb: IMG.t6 },
-  { id: 'lp6', title: 'Sing Along Stories',   emoji: '🎵', minAge: 0,  duration: '8 min',  tag: 'Music',      thumb: IMG.t7, isNew: true },
-  { id: 'lp7', title: 'Build It Bilby',       emoji: '🛠️', minAge: 6,  duration: '18 min', tag: 'STEM',       thumb: IMG.p1 },
-  { id: 'lp8', title: 'Friends Forever',      emoji: '💛', minAge: 4,  duration: '20 min', tag: 'Values',     thumb: IMG.p8 },
+  { id: 'lp1', title: 'Numbers with Barnaby',        emoji: '🔢', minAge: 3, duration: '12 min', tag: 'Maths',    thumb: p(0) },
+  { id: 'lp2', title: 'Colours of the Sea',          emoji: '🎨', minAge: 2, duration: '10 min', tag: 'Art',      thumb: p(3) },
+  { id: 'lp3', title: 'Letters with Luna',           emoji: '🔤', minAge: 3, duration: '15 min', tag: 'ABC',      thumb: p(2), isNew: true },
+  { id: 'lp4', title: 'Science on the Ship',         emoji: '🔬', minAge: 5, duration: '18 min', tag: 'Science',  thumb: p(4) },
+  { id: 'lp5', title: 'Dragon School',               emoji: '📚', minAge: 5, duration: '20 min', tag: 'Learning', thumb: p(5) },
+  { id: 'lp6', title: 'Sing Along Stories',          emoji: '🎵', minAge: 0, duration: '8 min',  tag: 'Music',    thumb: p(1), isNew: true },
+  { id: 'lp7', title: 'Build It Together',           emoji: '🛠️', minAge: 6, duration: '18 min', tag: 'STEM',     thumb: p(2) },
+  { id: 'lp8', title: "Barnaby's Big Questions",     emoji: '💛', minAge: 4, duration: '14 min', tag: 'Values',   thumb: p(0) },
 ];
 
 // ── Age filter config ─────────────────────────────────────────────────────────
