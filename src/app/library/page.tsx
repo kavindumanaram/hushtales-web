@@ -133,19 +133,18 @@ function Navbar({ scrolled }: { scrolled: boolean }) {
 
         {/* Nav links */}
         <div className="hidden lg:flex items-center gap-1 ml-4">
-          {['Home', 'Library', 'Generate', 'My Voice', 'Kids Zone'].map((label) => (
-            <Link
-              key={label}
-              href={label === 'Library' ? '/library' : `/${label.toLowerCase().replace(' ', '-')}`}
-              className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                label === 'Library'
-                  ? 'text-white bg-white/10'
-                  : 'text-white/55 hover:text-white hover:bg-white/8'
-              }`}
-            >
-              {label}
-            </Link>
-          ))}
+          <Link href="/library" className="px-3.5 py-1.5 rounded-full text-sm font-medium text-white bg-white/10">
+            Home 2
+          </Link>
+          <Link href="/home1" className="px-3.5 py-1.5 rounded-full text-sm font-medium text-white/55 hover:text-white hover:bg-white/10 transition-colors">
+            Home 1
+          </Link>
+          <Link
+            href="/kids"
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-bold bg-gradient-to-r from-pink-500 to-purple-500 text-white hover:from-pink-400 hover:to-purple-400 transition-all ml-2 shadow-md"
+          >
+            🐨 Kids Zone
+          </Link>
         </div>
 
         <div className="flex-1" />
