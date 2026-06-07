@@ -6,12 +6,8 @@ import { useState } from 'react';
 import { Menu, X, BookOpen } from 'lucide-react';
 
 const links = [
-  { href: '/', label: 'Home' },
   { href: '/home1', label: 'Home 1' },
-  { href: '/library', label: 'Library' },
-  { href: '/generate', label: 'Create Story' },
-  { href: '/voice', label: 'My Voice' },
-  { href: '/kids', label: 'Kids Zone' },
+  { href: '/library', label: 'Home 2' },
 ];
 
 export default function Navbar() {
