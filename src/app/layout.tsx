@@ -1,21 +1,18 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-import Providers from "./providers";
+import type { Metadata } from 'next';
+import { Nunito } from 'next/font/google';
+import './globals.css';
+import Providers from './providers';
+import Navbar from '@/components/ui/Navbar';
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const nunito = Nunito({
+  variable: '--font-nunito',
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
 });
 
 export const metadata: Metadata = {
-  title: "HushTales",
-  description: "Personalised animated bedtime stories in mum's voice",
+  title: 'HushTales',
+  description: 'Personalised animated bedtime stories in mum\'s voice',
 };
 
 export default function RootLayout({
@@ -24,13 +21,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">
-          <Providers>{children}</Providers>
-        </body>
+    <html lang="en" className={`${nunito.variable} h-full antialiased`}>
+      <body className="min-h-full flex flex-col bg-[#0f0f0f] text-[#faf7f2]">
+        <Providers>
+          <Navbar />
+          <main className="flex-1">{children}</main>
+        </Providers>
+      </body>
     </html>
   );
 }
