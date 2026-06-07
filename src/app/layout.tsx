@@ -1,11 +1,17 @@
 import type { Metadata } from 'next';
-import { Nunito } from 'next/font/google';
+import { Nunito, Plus_Jakarta_Sans } from 'next/font/google';
 import './globals.css';
 import Providers from './providers';
 import Navbar from '@/components/ui/Navbar';
 
 const nunito = Nunito({
   variable: '--font-nunito',
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+});
+
+const plusJakarta = Plus_Jakarta_Sans({
+  variable: '--font-plus-jakarta',
   subsets: ['latin'],
   weight: ['400', '500', '600', '700', '800'],
 });
@@ -21,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${nunito.variable} h-full antialiased`}>
+    <html lang="en" className={`${nunito.variable} ${plusJakarta.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-[#0f0f0f] text-[#faf7f2]">
         <Providers>
           <Navbar />
