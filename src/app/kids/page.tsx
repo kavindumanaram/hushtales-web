@@ -1,612 +1,551 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Play, Heart, Clock, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 
-// ── Local assets ─────────────────────────────────────────────────────────────
-const P = [
-  '/images/posters/poster1.jpeg', // Barnaby's Glowing Adventure (lantern)
-  '/images/posters/poster2.jpeg', // Barnaby's Glowing Adventure (stick)
-  '/images/posters/poster3.jpeg', // The Luna Kingdom
-  '/images/posters/poster4.jpeg', // The Magical Seas
-  '/images/posters/poster5.jpeg', // Captain Luna's Voyage
-  '/images/posters/poster6.jpeg', // Aetheria's Skies
-] as const;
-// Cycle helper — pick poster by index mod 6
-const p = (i: number) => P[i % P.length];
+// ── Keyframes ─────────────────────────────────────────────────────────────────
+const KEYFRAMES = `
+  @keyframes floatEmoji {
+    0%,100% { transform: translateY(0px) rotate(-3deg) scale(1); }
+    50%      { transform: translateY(-20px) rotate(5deg) scale(1.08); }
+  }
+  @keyframes floatEmoji2 {
+    0%,100% { transform: translateY(0px) rotate(5deg) scale(1); }
+    55%      { transform: translateY(18px) rotate(-6deg) scale(0.94); }
+  }
+  @keyframes playGlow {
+    0%,100% { box-shadow: 0 0 12px 3px rgba(245,183,49,0.55); }
+    50%      { box-shadow: 0 0 30px 10px rgba(245,183,49,0.85); }
+  }
+`;
 
-// ── Types & Data ─────────────────────────────────────────────────────────────
-type KidsShow = {
-  id: string;
-  title: string;
-  emoji: string;
-  minAge: number;
-  duration: string;
-  tag: string;
-  thumb: string;
-  progress?: number;
-  isNew?: boolean;
+// ── Assets ────────────────────────────────────────────────────────────────────
+const BANNERS = [
+  '/images/banners/banner1.jpeg',
+  '/images/banners/banner2.jpeg',
+  '/images/banners/banner3.jpeg',
+  '/images/banners/banner4.jpeg',
+  '/images/banners/banner5.jpeg',
+  '/images/banners/banner6.jpeg',
+];
+const POSTERS = [
+  '/images/posters/poster1.jpeg',
+  '/images/posters/poster2.jpeg',
+  '/images/posters/poster3.jpeg',
+  '/images/posters/poster4.jpeg',
+  '/images/posters/poster5.jpeg',
+  '/images/posters/poster6.jpeg',
+];
+
+const THEME_BG = [
+  'linear-gradient(135deg,#1a0533,#6b1fa2,#c2185b)',
+  'linear-gradient(135deg,#0a2744,#155e75,#0891b2)',
+  'linear-gradient(135deg,#052e16,#166534,#16a34a)',
+  'linear-gradient(135deg,#1e1b4b,#4c1d95,#7c3aed)',
+  'linear-gradient(135deg,#082f49,#0c4a6e,#0e7490)',
+  'linear-gradient(135deg,#2e1065,#5b21b6,#7c3aed)',
+];
+
+// ── Data ──────────────────────────────────────────────────────────────────────
+type Story = {
+  id: string; title: string; coverImg: string; themeBg: string;
+  duration: string; ageMin: number; badge?: string; badgeBg?: string;
+  emoji: string; category: string; progress?: number;
 };
 
-const FEATURED: KidsShow = {
-  id: 'f1', title: "Aetheria's Skies", emoji: '🐉',
-  minAge: 0, duration: '30 min', tag: 'Fantasy Adventure',
-  thumb: p(5), isNew: true,
-};
-
-const KEEP_WATCHING: KidsShow[] = [
-  { id: 'kw1', title: "Barnaby's Glowing Adventure", emoji: '🐰', minAge: 0, duration: '24 min', tag: 'Fantasy',   thumb: p(0), progress: 65 },
-  { id: 'kw2', title: 'The Magical Seas',            emoji: '🚢', minAge: 3, duration: '28 min', tag: 'Adventure', thumb: p(3), progress: 42 },
-  { id: 'kw3', title: "Barnaby's Quest",             emoji: '🌙', minAge: 3, duration: '22 min', tag: 'Mystery',   thumb: p(1), progress: 80 },
-  { id: 'kw4', title: "Captain Luna's Voyage",       emoji: '⚓', minAge: 4, duration: '25 min', tag: 'Pirates',   thumb: p(4), progress: 30 },
-  { id: 'kw5', title: 'The Luna Kingdom',            emoji: '🏰', minAge: 4, duration: '26 min', tag: 'Fantasy',   thumb: p(2), progress: 55 },
+const STORIES: Story[] = [
+  { id: 's1',  title: "Barnaby's Glowing Adventure", coverImg: POSTERS[0], themeBg: THEME_BG[0], duration: '24 min', ageMin: 2, badge: '⭐ Top Pick', badgeBg: '#F5B731', emoji: '🐰', category: 'fantasy', progress: 72 },
+  { id: 's2',  title: "Barnaby's Quest",             coverImg: POSTERS[1], themeBg: THEME_BG[1], duration: '22 min', ageMin: 3, badge: '🔥 Hot',     badgeBg: '#ef4444', emoji: '🌙', category: 'fantasy', progress: 45 },
+  { id: 's3',  title: 'The Luna Kingdom',            coverImg: POSTERS[2], themeBg: THEME_BG[2], duration: '26 min', ageMin: 4,                                          emoji: '🏰', category: 'fantasy' },
+  { id: 's4',  title: 'The Magical Seas',            coverImg: POSTERS[3], themeBg: THEME_BG[3], duration: '28 min', ageMin: 3, badge: '✨ New',     badgeBg: '#22c55e', emoji: '🚢', category: 'adventure' },
+  { id: 's5',  title: "Captain Luna's Voyage",       coverImg: POSTERS[4], themeBg: THEME_BG[4], duration: '25 min', ageMin: 4,                                          emoji: '⚓', category: 'adventure', progress: 30 },
+  { id: 's6',  title: "Aetheria's Skies",            coverImg: POSTERS[5], themeBg: THEME_BG[5], duration: '30 min', ageMin: 5, badge: '🏆 #1',      badgeBg: '#a855f7', emoji: '🐉', category: 'fantasy' },
+  { id: 's7',  title: 'Daisy in the Gum Trees',      coverImg: BANNERS[1], themeBg: THEME_BG[2], duration: '22 min', ageMin: 2, badge: '✨ New',     badgeBg: '#22c55e', emoji: '🌿', category: 'nature' },
+  { id: 's8',  title: 'Little Kangaroo Family',      coverImg: BANNERS[2], themeBg: THEME_BG[3], duration: '18 min', ageMin: 2,                                          emoji: '🦘', category: 'nature' },
+  { id: 's9',  title: 'Moonlit Dreamer',             coverImg: BANNERS[3], themeBg: THEME_BG[0], duration: '20 min', ageMin: 0, badge: '💛 For You', badgeBg: '#f59e0b', emoji: '🌙', category: 'nature' },
+  { id: 's10', title: 'The Kookaburra Song',         coverImg: BANNERS[4], themeBg: THEME_BG[1], duration: '22 min', ageMin: 2,                                          emoji: '🐦', category: 'nature' },
+  { id: 's11', title: 'The Moonlight Explorer',      coverImg: BANNERS[5], themeBg: THEME_BG[5], duration: '28 min', ageMin: 3, badge: '⭐ Top Pick', badgeBg: '#F5B731', emoji: '🐘', category: 'adventure' },
+  { id: 's12', title: 'Daisy Meets Max Koala',       coverImg: BANNERS[0], themeBg: THEME_BG[2], duration: '18 min', ageMin: 2,                                          emoji: '🐨', category: 'nature' },
 ];
 
-const AUSSIE_PICKS: KidsShow[] = [
-  { id: 'au1', title: "Barnaby's Glowing Adventure", emoji: '🐰', minAge: 0, duration: '24 min', tag: 'Fantasy',   thumb: p(0), isNew: true },
-  { id: 'au2', title: "Barnaby's Quest",             emoji: '🌙', minAge: 3, duration: '22 min', tag: 'Mystery',   thumb: p(1) },
-  { id: 'au3', title: 'The Luna Kingdom',            emoji: '🏰', minAge: 4, duration: '26 min', tag: 'Fantasy',   thumb: p(2) },
-  { id: 'au4', title: 'The Magical Seas',            emoji: '🚢', minAge: 3, duration: '28 min', tag: 'Adventure', thumb: p(3), isNew: true },
-  { id: 'au5', title: "Captain Luna's Voyage",       emoji: '⚓', minAge: 4, duration: '25 min', tag: 'Pirates',   thumb: p(4) },
-  { id: 'au6', title: "Aetheria's Skies",            emoji: '🐉', minAge: 5, duration: '30 min', tag: 'Dragons',   thumb: p(5) },
-  { id: 'au7', title: 'Moonlit Forest',              emoji: '🌲', minAge: 2, duration: '20 min', tag: 'Nature',    thumb: p(0) },
-  { id: 'au8', title: 'Dragon Riders',               emoji: '🔥', minAge: 5, duration: '28 min', tag: 'Fantasy',   thumb: p(5) },
+const AGE_FILTERS = [
+  { label: 'All',  emoji: '🌟' },
+  { label: '2+',   emoji: '🐣' },
+  { label: '3-5',  emoji: '🦊' },
+  { label: '6-7',  emoji: '🚀' },
+  { label: '8+',   emoji: '🐉' },
+  { label: 'Cosy', emoji: '🌙' },
 ];
 
-const TOP_PICKS: KidsShow[] = [
-  { id: 'tp1', title: "Aetheria's Skies",            emoji: '🐉', minAge: 5, duration: '30 min', tag: 'Fan Fave',  thumb: p(5), isNew: true },
-  { id: 'tp2', title: 'The Magical Seas',            emoji: '🚢', minAge: 3, duration: '28 min', tag: 'Adventure', thumb: p(3) },
-  { id: 'tp3', title: 'The Luna Kingdom',            emoji: '🏰', minAge: 4, duration: '26 min', tag: 'Fantasy',   thumb: p(2) },
-  { id: 'tp4', title: "Barnaby's Glowing Adventure", emoji: '🐰', minAge: 0, duration: '24 min', tag: 'Magic',     thumb: p(0), isNew: true },
-  { id: 'tp5', title: "Captain Luna's Voyage",       emoji: '⚓', minAge: 4, duration: '25 min', tag: 'Pirates',   thumb: p(4) },
-  { id: 'tp6', title: "Barnaby's Quest",             emoji: '🌙', minAge: 3, duration: '22 min', tag: 'Mystery',   thumb: p(1) },
-  { id: 'tp7', title: 'Ocean Rescue',                emoji: '🐠', minAge: 4, duration: '22 min', tag: 'Ocean',     thumb: p(3) },
-  { id: 'tp8', title: 'Sky Dragons',                 emoji: '🌈', minAge: 5, duration: '28 min', tag: 'Fantasy',   thumb: p(5) },
+const CIRCLE_GRADIENTS = [
+  'linear-gradient(135deg,#1a0533,#6b1fa2,#c2185b)',
+  'linear-gradient(135deg,#1a0a2e,#0d47a1,#1565c0)',
+  'linear-gradient(135deg,#0a2744,#155e75,#0891b2)',
+  'linear-gradient(135deg,#14532d,#166534,#16a34a)',
+  'linear-gradient(135deg,#1c1917,#57534e,#78716c)',
+  'linear-gradient(135deg,#020617,#1e3a8a,#1d4ed8)',
 ];
 
-const LEARN_PLAY: KidsShow[] = [
-  { id: 'lp1', title: 'Numbers with Barnaby',        emoji: '🔢', minAge: 3, duration: '12 min', tag: 'Maths',    thumb: p(0) },
-  { id: 'lp2', title: 'Colours of the Sea',          emoji: '🎨', minAge: 2, duration: '10 min', tag: 'Art',      thumb: p(3) },
-  { id: 'lp3', title: 'Letters with Luna',           emoji: '🔤', minAge: 3, duration: '15 min', tag: 'ABC',      thumb: p(2), isNew: true },
-  { id: 'lp4', title: 'Science on the Ship',         emoji: '🔬', minAge: 5, duration: '18 min', tag: 'Science',  thumb: p(4) },
-  { id: 'lp5', title: 'Dragon School',               emoji: '📚', minAge: 5, duration: '20 min', tag: 'Learning', thumb: p(5) },
-  { id: 'lp6', title: 'Sing Along Stories',          emoji: '🎵', minAge: 0, duration: '8 min',  tag: 'Music',    thumb: p(1), isNew: true },
-  { id: 'lp7', title: 'Build It Together',           emoji: '🛠️', minAge: 6, duration: '18 min', tag: 'STEM',     thumb: p(2) },
-  { id: 'lp8', title: "Barnaby's Big Questions",     emoji: '💛', minAge: 4, duration: '14 min', tag: 'Values',   thumb: p(0) },
+const CATEGORIES = [
+  { id: 'all',       label: 'All',     emoji: '✨' },
+  { id: 'fantasy',   label: 'Fantasy', emoji: '🧙' },
+  { id: 'adventure', label: 'Venture', emoji: '⚔️' },
+  { id: 'nature',    label: 'Nature',  emoji: '🌿' },
 ];
 
-// ── Age filter config ─────────────────────────────────────────────────────────
-const AGE_GROUPS = [
-  { key: 'all',    label: 'All',       emoji: '⭐', max: 99  },
-  { key: 'tiny',   label: 'Tiny Tots', emoji: '🐣', max: 4   },
-  { key: 'junior', label: 'Junior',    emoji: '🦘', max: 7   },
-  { key: 'big',    label: 'Big Kids',  emoji: '🦁', max: 12  },
-] as const;
-type AgeKey = typeof AGE_GROUPS[number]['key'];
+// ── ArrowScrollRow ────────────────────────────────────────────────────────────
+function ArrowScrollRow({ children, gap = 12, px = 20 }: { children: React.ReactNode; gap?: number; px?: number }) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [canLeft,  setCanLeft]  = useState(false);
+  const [canRight, setCanRight] = useState(false);
 
-function filterByAge(shows: KidsShow[], key: AgeKey): KidsShow[] {
-  if (key === 'all') return shows;
-  const group = AGE_GROUPS.find((g) => g.key === key)!;
-  return shows.filter((s) => s.minAge <= group.max);
-}
+  const checkArrows = useCallback(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    setCanLeft(el.scrollLeft > 4);
+    setCanRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
+  }, []);
 
-// ── Icons ─────────────────────────────────────────────────────────────────────
-function PlayIcon() {
-  return (
-    <svg width={22} height={22} viewBox="0 0 24 24" fill="currentColor">
-      <path d="M8 5.14v14l11-7-11-7z" />
-    </svg>
-  );
-}
-function HeartIcon({ filled }: { filled: boolean }) {
-  return (
-    <svg width={16} height={16} viewBox="0 0 24 24" fill={filled ? '#FF6B9D' : 'none'} stroke={filled ? '#FF6B9D' : 'currentColor'} strokeWidth={2}>
-      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-    </svg>
-  );
-}
-function ChevRight() {
-  return (
-    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-      <path d="M9 18l6-6-6-6" />
-    </svg>
-  );
-}
-function ChevLeft() {
-  return (
-    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-      <path d="M15 18l-6-6 6-6" />
-    </svg>
-  );
-}
+  useEffect(() => {
+    const id = setTimeout(checkArrows, 80);
+    return () => clearTimeout(id);
+  }, [checkArrows, children]);
 
-// ── Kids Navbar ───────────────────────────────────────────────────────────────
-function KidsNavbar({ age, setAge }: { age: AgeKey; setAge: (a: AgeKey) => void }) {
-  return (
-    <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b-2 border-yellow-200 shadow-sm">
-      <div className="max-w-7xl mx-auto px-5 py-3 flex items-center gap-4 flex-wrap">
+  const scroll = (dir: 1 | -1) => {
+    trackRef.current?.scrollBy({ left: dir * 300, behavior: 'smooth' });
+    setTimeout(checkArrows, 360);
+  };
 
-        {/* Logo */}
-        <Link href="/library" className="flex items-center gap-2 shrink-0">
-          <span className="text-2xl">📚</span>
-          <div className="leading-none">
-            <span className="text-lg font-black" style={{ background: 'linear-gradient(90deg,#FF6B9D,#9B5DE5,#00B4D8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              HushTales
-            </span>
-            <span className="block text-[10px] font-bold text-yellow-500 tracking-wider uppercase -mt-0.5">Kids Zone</span>
-          </div>
-        </Link>
-
-        {/* Main nav — same 3 items as global navbar */}
-        <div className="flex items-center gap-1">
-          {([
-            { href: '/home1',   label: 'Home 1'  },
-            { href: '/library', label: 'Home 2'  },
-            { href: '/kids',    label: '🐨 Kids' },
-          ] as const).map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
-              className={`px-3.5 py-1.5 rounded-full text-sm font-bold transition-all duration-200 ${
-                href === '/kids'
-                  ? 'bg-[#9B5DE5] text-white shadow-md'
-                  : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'
-              }`}
-            >
-              {label}
-            </Link>
-          ))}
-        </div>
-
-        {/* Divider */}
-        <div className="hidden sm:block w-px h-6 bg-gray-200" />
-
-        {/* Age filter chips */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {AGE_GROUPS.map((g) => (
-            <button
-              key={g.key}
-              onClick={() => setAge(g.key)}
-              className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold transition-all duration-200 ${
-                age === g.key
-                  ? 'bg-amber-400 text-black shadow scale-105'
-                  : 'bg-gray-100 text-gray-500 hover:bg-yellow-100 hover:text-yellow-700'
-              }`}
-            >
-              <span>{g.emoji}</span>
-              <span>{g.label}</span>
-            </button>
-          ))}
-        </div>
-
-        <div className="flex-1" />
-
-        {/* Parent zone */}
-        <Link
-          href="/library"
-          className="shrink-0 flex items-center gap-1.5 bg-gray-800 text-white text-xs font-bold px-4 py-2 rounded-full hover:bg-gray-700 transition-colors"
-        >
-          🔒 Parent Zone
-        </Link>
-      </div>
-    </nav>
-  );
-}
-
-// ── Kids Card ─────────────────────────────────────────────────────────────────
-function KidsCard({
-  show,
-  isFav,
-  onFav,
-  large = false,
-}: {
-  show: KidsShow;
-  isFav: boolean;
-  onFav: (id: string) => void;
-  large?: boolean;
-}) {
-  const w = large ? 190 : 160;
-  const h = large ? 270 : 224;
+  const arrowStyle: React.CSSProperties = {
+    position: 'absolute', top: '50%', transform: 'translateY(-50%)', zIndex: 10,
+    width: 36, height: 36, borderRadius: '50%',
+    background: 'rgba(15,14,35,0.88)', backdropFilter: 'blur(10px)',
+    border: '1.5px solid rgba(255,255,255,0.15)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer', boxShadow: '0 4px 18px rgba(0,0,0,0.32)', padding: 0,
+  };
 
   return (
-    <div
-      className="group relative shrink-0 cursor-pointer"
-      style={{ width: w }}
-    >
-      {/* Poster */}
-      <div
-        className="relative overflow-hidden rounded-2xl shadow-lg group-hover:shadow-xl transition-all duration-300 group-hover:-translate-y-2"
-        style={{ width: w, height: h }}
-      >
-        <img
-          src={show.thumb}
-          alt={show.title}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-        />
-
-        {/* Hover overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex flex-col justify-end p-3">
-          <button
-            aria-label={`Play ${show.title}`}
-            className="mx-auto mb-2 w-12 h-12 rounded-full bg-white text-black flex items-center justify-center shadow-xl hover:scale-110 transition-transform"
-          >
-            <PlayIcon />
-          </button>
-          <p className="text-white text-xs font-bold text-center line-clamp-1">{show.title}</p>
-          <p className="text-white/60 text-[10px] text-center">{show.duration} · {show.tag}</p>
-        </div>
-
-        {/* Fav button */}
-        <button
-          aria-label={isFav ? 'Remove from favourites' : 'Add to favourites'}
-          onClick={(e) => { e.stopPropagation(); onFav(show.id); }}
-          className="absolute top-2 right-2 w-7 h-7 bg-white/90 rounded-full flex items-center justify-center shadow opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110"
-        >
-          <HeartIcon filled={isFav} />
-        </button>
-
-        {/* NEW badge */}
-        {show.isNew && (
-          <div className="absolute top-2 left-2 bg-[#FF6B35] text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wide shadow">
-            NEW
-          </div>
+    <div style={{ position: 'relative', marginBottom: 8 }}>
+      <AnimatePresence>
+        {canLeft && (
+          <motion.button key="al" initial={{ opacity: 0, scale: 0.75 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.75 }} transition={{ duration: 0.15 }}
+            onClick={() => scroll(-1)} style={{ ...arrowStyle, left: 4 }}>
+            <ChevronLeft style={{ width: 16, height: 16, color: '#fff' }} />
+          </motion.button>
         )}
-
-        {/* Progress bar */}
-        {show.progress !== undefined && (
-          <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-black/30">
-            <div
-              className="h-full rounded-r-full"
-              style={{ width: `${show.progress}%`, background: 'linear-gradient(90deg,#FF6B9D,#9B5DE5)' }}
-            />
-          </div>
+      </AnimatePresence>
+      <AnimatePresence>
+        {canRight && (
+          <motion.button key="ar" initial={{ opacity: 0, scale: 0.75 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.75 }} transition={{ duration: 0.15 }}
+            onClick={() => scroll(1)} style={{ ...arrowStyle, right: 4 }}>
+            <ChevronRight style={{ width: 16, height: 16, color: '#fff' }} />
+          </motion.button>
         )}
-      </div>
-
-      {/* Title */}
-      <p className="mt-2 text-gray-800 text-sm font-bold text-center line-clamp-1 group-hover:text-purple-600 transition-colors">
-        {show.emoji} {show.title}
-      </p>
-      <p className="text-gray-400 text-[11px] text-center">
-        {show.progress !== undefined ? `${show.progress}% done` : show.tag}
-      </p>
-    </div>
-  );
-}
-
-// ── Kids Row ──────────────────────────────────────────────────────────────────
-function KidsRow({
-  title,
-  emoji,
-  shows,
-  favs,
-  onFav,
-  accentColor,
-}: {
-  title: string;
-  emoji: string;
-  shows: KidsShow[];
-  favs: Set<string>;
-  onFav: (id: string) => void;
-  accentColor: string;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const scroll = (dir: 'l' | 'r') =>
-    ref.current?.scrollBy({ left: dir === 'r' ? 540 : -540, behavior: 'smooth' });
-
-  if (shows.length === 0) return null;
-
-  return (
-    <div className="group/row">
-      <div className="flex items-center justify-between mb-5">
-        <h2 className="text-xl font-black text-gray-800 flex items-center gap-2">
-          <span className="text-2xl">{emoji}</span>
-          <span style={{ background: accentColor, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            {title}
-          </span>
-        </h2>
-        <button className="text-sm font-bold text-purple-500 hover:text-purple-700 transition-colors opacity-0 group-hover/row:opacity-100">
-          See All →
-        </button>
-      </div>
-
-      <div className="relative">
-        <button
-          onClick={() => scroll('l')}
-          aria-label="Scroll left"
-          className="absolute -left-5 top-1/2 -translate-y-8 z-10 w-10 h-10 bg-white shadow-lg rounded-full flex items-center justify-center text-gray-700 hover:text-purple-600 hover:shadow-xl transition-all opacity-0 group-hover/row:opacity-100 border border-gray-100"
-        >
-          <ChevLeft />
-        </button>
-
-        <div
-          ref={ref}
-          className="flex gap-4 overflow-x-auto pb-4"
-          style={{ scrollbarWidth: 'none' }}
-        >
-          {shows.map((s) => (
-            <KidsCard key={s.id} show={s} isFav={favs.has(s.id)} onFav={onFav} />
-          ))}
-        </div>
-
-        <button
-          onClick={() => scroll('r')}
-          aria-label="Scroll right"
-          className="absolute -right-5 top-1/2 -translate-y-8 z-10 w-10 h-10 bg-white shadow-lg rounded-full flex items-center justify-center text-gray-700 hover:text-purple-600 hover:shadow-xl transition-all opacity-0 group-hover/row:opacity-100 border border-gray-100"
-        >
-          <ChevRight />
-        </button>
+      </AnimatePresence>
+      <div ref={trackRef} onScroll={checkArrows}
+        style={{ display: 'flex', gap, padding: `0 ${px}px`, overflowX: 'auto', scrollbarWidth: 'none' }}>
+        {children}
       </div>
     </div>
   );
 }
 
-// ── Hero ──────────────────────────────────────────────────────────────────────
-function HeroSection({ onFav, isFav }: { onFav: (id: string) => void; isFav: boolean }) {
+// ── SectionHeader ─────────────────────────────────────────────────────────────
+function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <section
-      className="relative overflow-hidden"
+    <div style={{ padding: '0 20px', marginBottom: 14 }}>
+      <h2 style={{ color: '#0b1220', fontWeight: 900, fontSize: 18, lineHeight: 1.2, letterSpacing: '-0.01em' }}>{title}</h2>
+      {subtitle && <p style={{ color: '#9CA3AF', fontSize: 11, marginTop: 2 }}>{subtitle}</p>}
+    </div>
+  );
+}
+
+// ── LandscapeCard ─────────────────────────────────────────────────────────────
+function LandscapeCard({ story, index = 0, liked, onLike }: { story: Story; index?: number; liked: boolean; onLike: (id: string) => void }) {
+  const [imgErr, setImgErr] = useState(false);
+  const showImg = !imgErr;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: index * 0.06, duration: 0.32 }}
+      whileTap={{ scale: 0.96 }}
       style={{
-        background: 'linear-gradient(135deg, #FFD166 0%, #FF6B9D 35%, #9B5DE5 65%, #00B4D8 100%)',
-        minHeight: 420,
+        width: 280, height: 160, flexShrink: 0, borderRadius: 20, overflow: 'hidden', cursor: 'pointer', position: 'relative',
+        background: showImg ? '#000' : story.themeBg,
+        boxShadow: '0 12px 40px rgba(16,24,40,0.28)',
+        border: '1px solid rgba(255,255,255,0.06)',
       }}
     >
-      {/* Decorative floating shapes */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        {[
-          { t: '8%',  l: '5%',  s: 60,  o: 0.15, r: '12deg'  },
-          { t: '55%', l: '2%',  s: 40,  o: 0.12, r: '-8deg'  },
-          { t: '15%', r: '22%', s: 80,  o: 0.10, r2: '20deg' },
-          { t: '65%', r: '8%',  s: 50,  o: 0.12, r2: '-15deg'},
-          { t: '40%', l: '45%', s: 30,  o: 0.15, r: '5deg'   },
-        ].map((d, i) => (
-          <div
-            key={i}
-            className="absolute bg-white rounded-2xl"
-            style={{
-              top: d.t, left: (d as { l?: string }).l, right: (d as { r?: string }).r,
-              width: d.s, height: d.s, opacity: d.o,
-              transform: `rotate(${d.r ?? d.r2})`,
-            }}
-          />
-        ))}
-        {/* Big circle top-right */}
-        <div className="absolute -top-16 -right-16 w-64 h-64 bg-white/10 rounded-full" />
-        <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-white/10 rounded-full" />
+      {showImg && (
+        <img src={story.coverImg} alt={story.title} onError={() => setImgErr(true)}
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.9 }} />
+      )}
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top,rgba(2,6,23,0.85) 0%,rgba(2,6,23,0.28) 55%,rgba(2,6,23,0.04) 100%)' }} />
+
+      {/* Top row */}
+      <div style={{ position: 'absolute', top: 10, left: 10, right: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        {story.badge && (
+          <span style={{ padding: '3px 9px', borderRadius: 99, fontSize: 10, fontWeight: 800, background: story.badgeBg, color: story.badgeBg === '#F5B731' ? '#1a0e00' : '#fff' }}>
+            {story.badge}
+          </span>
+        )}
+        <button onClick={e => { e.stopPropagation(); onLike(story.id); }} style={{ marginLeft: 'auto', width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.45)', border: 'none', cursor: 'pointer' }}>
+          <Heart style={{ width: 13, height: 13, color: liked ? '#FF6B9D' : '#fff', fill: liked ? '#FF6B9D' : 'none' }} />
+        </button>
       </div>
 
-      <div className="relative z-10 flex flex-col lg:flex-row items-center gap-8 px-8 lg:px-16 py-12 max-w-6xl mx-auto">
-
-        {/* Left: text content */}
-        <div className="flex-1 text-white">
-          {/* Greeting */}
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-3xl animate-bounce">🦘</span>
-            <span className="bg-white/20 text-white text-xs font-black px-3 py-1 rounded-full tracking-widest uppercase backdrop-blur-sm">
-              G&apos;day, Explorer!
-            </span>
-          </div>
-
-          <h1 className="text-4xl sm:text-5xl font-black leading-tight mb-3 drop-shadow-lg">
-            What shall we<br />
-            <span className="text-yellow-200">watch today? 🌟</span>
-          </h1>
-
-          <p className="text-white/85 text-base mb-2 font-medium">
-            🎬 <strong>Featured:</strong> {FEATURED.title}
-          </p>
-          <div className="flex items-center gap-3 mb-6 flex-wrap">
-            <span className="bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full backdrop-blur-sm">
-              {FEATURED.tag}
-            </span>
-            <span className="text-white/70 text-sm">⏱ {FEATURED.duration}</span>
-            <span className="text-white/70 text-sm">✅ All Ages</span>
-            <span className="bg-green-400/30 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-              🇦🇺 Australian
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3 flex-wrap">
-            <button className="flex items-center gap-2.5 bg-white text-purple-700 font-black text-base px-8 py-3.5 rounded-full shadow-xl hover:bg-yellow-50 hover:scale-105 transition-all duration-200">
-              <PlayIcon />
-              Play Now!
-            </button>
-            <button
-              onClick={() => onFav(FEATURED.id)}
-              className={`flex items-center gap-2 font-bold text-sm px-6 py-3.5 rounded-full border-2 transition-all duration-200 ${
-                isFav
-                  ? 'bg-pink-400 border-pink-400 text-white scale-105'
-                  : 'border-white/60 text-white hover:bg-white/20'
-              }`}
-            >
-              <HeartIcon filled={isFav} />
-              {isFav ? 'Saved! 💖' : 'Favourite'}
-            </button>
-          </div>
-        </div>
-
-        {/* Right: featured poster */}
-        <div className="relative shrink-0">
-          {/* Glow ring */}
-          <div
-            className="absolute inset-0 rounded-3xl blur-xl opacity-60"
-            style={{ background: 'linear-gradient(135deg,#FFD166,#FF6B9D)', transform: 'scale(1.08)' }}
-          />
-          <div className="relative w-[200px] sm:w-[240px] h-[290px] sm:h-[340px] rounded-3xl overflow-hidden shadow-2xl border-4 border-white/40 rotate-3 hover:rotate-0 transition-transform duration-500">
-            <img src={FEATURED.thumb} alt={FEATURED.title} className="w-full h-full object-cover" />
-            {/* NEW ribbon */}
-            <div
-              className="absolute top-5 -right-8 bg-yellow-400 text-black text-[10px] font-black px-8 py-1 tracking-wider"
-              style={{ transform: 'rotate(45deg)' }}
-            >
-              NEW ✨
+      {/* Bottom */}
+      <div style={{ position: 'absolute', bottom: 10, left: 12, right: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <div style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
+          {story.progress !== undefined && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+              <div style={{ flex: 1, height: 3, borderRadius: 99, background: 'rgba(255,255,255,0.2)' }}>
+                <div style={{ width: `${story.progress}%`, height: '100%', borderRadius: 99, background: 'linear-gradient(90deg,#F5B731,#D4950A)' }} />
+              </div>
+              <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 9, fontWeight: 600 }}>{story.progress}%</span>
             </div>
+          )}
+          <p style={{ color: '#fff', fontWeight: 800, fontSize: 13, lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+            {story.emoji} {story.title}
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+            <Clock style={{ width: 9, height: 9, color: 'rgba(255,255,255,0.55)' }} />
+            <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: 10, fontWeight: 600 }}>{story.duration}</span>
+            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10 }}>· Age {story.ageMin}+</span>
           </div>
-          {/* Fun emoji floating around */}
-          <span className="absolute -top-4 -left-4 text-3xl animate-bounce" style={{ animationDelay: '0.2s' }}>⭐</span>
-          <span className="absolute -bottom-3 -right-3 text-2xl animate-bounce" style={{ animationDelay: '0.5s' }}>🎉</span>
-          <span className="absolute top-1/2 -left-6 text-2xl animate-bounce" style={{ animationDelay: '0.8s' }}>🎈</span>
+        </div>
+        <div style={{
+          width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+          background: 'linear-gradient(135deg,#F5B731,#D4950A)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 4px 14px rgba(245,183,49,0.6)',
+          animation: 'playGlow 2.5s ease-in-out infinite',
+        }}>
+          <Play style={{ width: 14, height: 14, fill: '#1a0e00', color: '#1a0e00', marginLeft: 2 }} />
         </div>
       </div>
-
-      {/* Wave bottom */}
-      <div className="absolute bottom-0 left-0 right-0 overflow-hidden" style={{ height: 40 }}>
-        <svg viewBox="0 0 1440 40" className="w-full h-full" preserveAspectRatio="none">
-          <path d="M0,40 C360,0 1080,40 1440,0 L1440,40 Z" fill="#FFFBF4" />
-        </svg>
-      </div>
-    </section>
+    </motion.div>
   );
 }
 
-// ── Fun Stats Bar ─────────────────────────────────────────────────────────────
-function StatsBar() {
+// ── SquareCard ────────────────────────────────────────────────────────────────
+function SquareCard({ story, index = 0, liked, onLike }: { story: Story; index?: number; liked: boolean; onLike: (id: string) => void }) {
+  const [imgErr, setImgErr] = useState(false);
+  const showImg = !imgErr;
+
   return (
-    <div className="bg-white border-y border-gray-100 py-4">
-      <div className="max-w-6xl mx-auto px-8 flex items-center justify-around flex-wrap gap-4">
-        {[
-          { emoji: '🎬', value: '500+',  label: 'Stories'       },
-          { emoji: '🇦🇺', value: '100%', label: 'Australian'    },
-          { emoji: '🌟', value: '4.9★',  label: 'Kids Rating'   },
-          { emoji: '👨‍👩‍👧', value: 'Safe',  label: 'Ad-Free Zone' },
-        ].map((s) => (
-          <div key={s.label} className="text-center">
-            <div className="text-2xl mb-0.5">{s.emoji}</div>
-            <div className="text-lg font-black text-gray-800">{s.value}</div>
-            <div className="text-xs text-gray-500 font-medium">{s.label}</div>
+    <motion.div
+      initial={{ opacity: 0, scale: 0.88 }} animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: index * 0.05, duration: 0.3 }}
+      whileTap={{ scale: 0.96 }}
+      style={{
+        aspectRatio: '1 / 1', borderRadius: 18, overflow: 'hidden', cursor: 'pointer', position: 'relative',
+        background: showImg ? '#000' : story.themeBg,
+        boxShadow: '0 10px 30px rgba(16,24,40,0.22)',
+        border: '1px solid rgba(255,255,255,0.06)',
+        minWidth: 0,
+      }}
+    >
+      {showImg && (
+        <img src={story.coverImg} alt={story.title} onError={() => setImgErr(true)}
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top', opacity: 0.88 }} />
+      )}
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top,rgba(2,6,23,0.82) 0%,rgba(2,6,23,0.25) 55%,transparent 100%)' }} />
+
+      {story.badge && (
+        <div style={{ position: 'absolute', top: 8, left: 8 }}>
+          <span style={{ padding: '2px 7px', borderRadius: 99, fontSize: 9, fontWeight: 800, background: story.badgeBg, color: story.badgeBg === '#F5B731' ? '#1a0e00' : '#fff' }}>
+            {story.badge}
+          </span>
+        </div>
+      )}
+
+      <button onClick={e => { e.stopPropagation(); onLike(story.id); }} style={{ position: 'absolute', top: 8, right: 8, width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.45)', border: 'none', cursor: 'pointer' }}>
+        <Heart style={{ width: 12, height: 12, color: liked ? '#FF6B9D' : '#fff', fill: liked ? '#FF6B9D' : 'none' }} />
+      </button>
+
+      <div style={{ position: 'absolute', bottom: 8, left: 9, right: 9, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <div style={{ flex: 1, minWidth: 0, paddingRight: 6 }}>
+          <p style={{ color: '#fff', fontWeight: 800, fontSize: 11, lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+            {story.emoji} {story.title}
+          </p>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 3, color: 'rgba(255,255,255,0.5)', fontSize: 9, fontWeight: 600, marginTop: 3 }}>
+            <Clock style={{ width: 8, height: 8 }} />{story.duration}
+          </span>
+        </div>
+        <div style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg,#F5B731,#D4950A)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 3px 10px rgba(245,183,49,0.55)' }}>
+          <Play style={{ width: 11, height: 11, fill: '#1a0e00', color: '#1a0e00', marginLeft: 1 }} />
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Hero Banner ───────────────────────────────────────────────────────────────
+function HeroBanner() {
+  return (
+    <div className="relative overflow-hidden" style={{ background: 'linear-gradient(135deg,#0f0e23,#1a1535,#0d1117)', minHeight: 260 }}>
+      {/* Glow orbs */}
+      <div style={{ position: 'absolute', top: '-15%', right: '-5%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle,rgba(124,58,237,0.45) 0%,transparent 70%)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', bottom: '-25%', left: '3%',  width: 240, height: 240, borderRadius: '50%', background: 'radial-gradient(circle,rgba(6,182,212,0.30) 0%,transparent 70%)',    pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', top: '30%',   left: '40%',  width: 180, height: 180, borderRadius: '50%', background: 'radial-gradient(circle,rgba(245,183,49,0.18) 0%,transparent 70%)',   pointerEvents: 'none' }} />
+
+      {/* Floating emojis */}
+      {[
+        { ch: '🌙', top: '10%', right: '14%', size: 44, anim: 'floatEmoji',  dur: '7s',  delay: '0s'   },
+        { ch: '✨', top: '55%', right: '6%',  size: 30, anim: 'floatEmoji2', dur: '5s',  delay: '1.2s' },
+        { ch: '🐰', top: '18%', right: '35%', size: 20, anim: 'floatEmoji',  dur: '6s',  delay: '0.5s' },
+        { ch: '⭐', top: '65%', right: '27%', size: 24, anim: 'floatEmoji2', dur: '8s',  delay: '2s'   },
+        { ch: '🐉', top: '8%',  right: '55%', size: 18, anim: 'floatEmoji',  dur: '5.5s',delay: '1.8s' },
+      ].map((d, i) => (
+        <div key={i} style={{ position: 'absolute', top: d.top, right: d.right, fontSize: d.size, opacity: 0.65, pointerEvents: 'none', userSelect: 'none', animation: `${d.anim} ${d.dur} ease-in-out ${d.delay} infinite` }}>{d.ch}</div>
+      ))}
+
+      {/* Bottom fade to white */}
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top,rgba(251,248,255,1) 0%,rgba(251,248,255,0.04) 30%,transparent 55%)', pointerEvents: 'none' }} />
+
+      <div className="relative z-10 px-6 py-8" style={{ paddingBottom: 52 }}>
+        {/* Label */}
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'rgba(245,183,49,0.15)', border: '1px solid rgba(245,183,49,0.35)' }}>
+            <Sparkles className="w-4 h-4" style={{ color: '#F5B731' }} />
           </div>
-        ))}
+          <span className="text-xs font-black uppercase tracking-widest" style={{ color: 'rgba(245,183,49,0.85)' }}>✦ Kids Zone</span>
+        </div>
+
+        <h1 className="text-white font-black mb-2" style={{ fontSize: 'clamp(26px,5vw,40px)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
+          G&apos;day, little dreamer! 🌙
+        </h1>
+        <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 14, marginBottom: 26, maxWidth: 340 }}>
+          Enchanting bedtime stories crafted just for you — safe, Australian, ad-free.
+        </p>
+
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <motion.button whileTap={{ scale: 0.93 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', borderRadius: 99, background: 'linear-gradient(135deg,#F5B731,#D4950A)', color: '#1a0e00', fontWeight: 900, fontSize: 14, border: 'none', cursor: 'pointer', animation: 'playGlow 2.4s ease-in-out infinite' }}>
+            <Play style={{ width: 15, height: 15, fill: '#1a0e00' }} />
+            Start Watching
+          </motion.button>
+          <Link href="/generate">
+            <motion.button whileTap={{ scale: 0.93 }}
+              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 20px', borderRadius: 99, background: 'rgba(255,255,255,0.10)', backdropFilter: 'blur(12px)', border: '1.5px solid rgba(255,255,255,0.25)', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+              <Sparkles style={{ width: 14, height: 14 }} />
+              Create a Story
+            </motion.button>
+          </Link>
+        </div>
       </div>
     </div>
-  );
-}
-
-// ── Parent CTA ────────────────────────────────────────────────────────────────
-function ParentCta() {
-  return (
-    <section className="mx-6 my-10 rounded-3xl overflow-hidden relative bg-gradient-to-r from-violet-600 to-indigo-600 text-white">
-      <div className="absolute inset-0 opacity-20" style={{ background: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'0.4\'%3E%3Ccircle cx=\'30\' cy=\'30\' r=\'4\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }} />
-      <div className="relative flex flex-col sm:flex-row items-center justify-between px-10 py-10 gap-6">
-        <div>
-          <p className="text-yellow-300 text-xs font-black tracking-[0.25em] uppercase mb-2">For Mums & Dads 👨‍👩‍👧</p>
-          <h3 className="text-2xl sm:text-3xl font-black leading-tight mb-2">
-            Create a story<br />
-            <span className="text-yellow-300">in your voice 🎙️</span>
-          </h3>
-          <p className="text-white/70 text-sm max-w-xs">
-            Record once — HushTales AI turns it into a personalised animated bedtime story your little one will love. 🐨
-          </p>
-        </div>
-        <Link
-          href="/generate"
-          className="shrink-0 bg-yellow-400 hover:bg-yellow-300 text-black font-black text-base px-8 py-4 rounded-full transition-all hover:scale-105 shadow-xl"
-        >
-          Start Creating 🎉
-        </Link>
-      </div>
-    </section>
   );
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function KidsZonePage() {
-  const [ageKey, setAgeKey] = useState<AgeKey>('all');
-  const [favs, setFavs] = useState<Set<string>>(new Set());
+  const [activeAge,      setActiveAge]      = useState('All');
+  const [activeCategory, setActiveCategory] = useState('all');
+  const [liked,          setLiked]          = useState<Set<string>>(new Set());
 
-  const toggleFav = (id: string) =>
-    setFavs((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
+  const toggleLike = (id: string) =>
+    setLiked(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  const filterStories = (stories: Story[]) => {
+    return stories.filter(s => {
+      const catMatch = activeCategory === 'all' || s.category === activeCategory;
+      const ageMatch = activeAge === 'All' || activeAge === 'Cosy'
+        ? true
+        : activeAge === '2+' ? s.ageMin <= 3
+        : activeAge === '3-5' ? s.ageMin >= 3 && s.ageMin <= 5
+        : activeAge === '6-7' ? s.ageMin >= 6 && s.ageMin <= 7
+        : s.ageMin >= 8;
+      return catMatch && ageMatch;
     });
+  };
 
-  const keepFiltered   = filterByAge(KEEP_WATCHING, ageKey);
-  const aussieFiltered = filterByAge(AUSSIE_PICKS,  ageKey);
-  const topFiltered    = filterByAge(TOP_PICKS,     ageKey);
-  const learnFiltered  = filterByAge(LEARN_PLAY,    ageKey);
+  const allFiltered = filterStories(STORIES);
+  const watching    = STORIES.filter(s => s.progress !== undefined);
+  const featured    = STORIES.filter(s => s.coverImg.startsWith('/images/banners'));
+  const gridStories = STORIES.filter(s => s.coverImg.startsWith('/images/posters'));
+  const nature      = filterStories(STORIES.filter(s => s.category === 'nature'));
+  const fantasy     = filterStories(STORIES.filter(s => s.category === 'fantasy'));
+  const adventure   = filterStories(STORIES.filter(s => s.category === 'adventure'));
+  const likedShows  = STORIES.filter(s => liked.has(s.id));
 
   return (
-    <div className="min-h-screen" style={{ background: '#FFFBF4', fontFamily: 'var(--font-nunito), sans-serif' }}>
+    <div className="min-h-screen -mt-16" style={{ background: '#F4F3F9', fontFamily: 'var(--font-nunito), sans-serif' }}>
+      <style>{KEYFRAMES}</style>
 
-      <KidsNavbar age={ageKey} setAge={setAgeKey} />
+      {/* Hero (full bleed, sits under transparent navbar) */}
+      <HeroBanner />
 
-      <HeroSection onFav={toggleFav} isFav={favs.has(FEATURED.id)} />
+      {/* White content card — pulls up over hero bottom */}
+      <div style={{
+        background: 'linear-gradient(180deg,#fbf8ff,#f4f3f9)',
+        borderRadius: '28px 28px 0 0',
+        marginTop: -32,
+        position: 'relative',
+        zIndex: 10,
+        paddingTop: 28,
+        paddingBottom: 80,
+        boxShadow: '0 -8px 32px rgba(16,24,40,0.06)',
+        borderTop: '1px solid rgba(15,14,35,0.04)',
+      }}>
 
-      <StatsBar />
+        {/* Age filter circles */}
+        <ArrowScrollRow gap={20} px={20}>
+          {AGE_FILTERS.map(({ label, emoji }, idx) => {
+            const isActive = activeAge === label;
+            return (
+              <motion.button key={label} whileTap={{ scale: 0.88 }} onClick={() => setActiveAge(label)}
+                style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                <div style={{
+                  width: 66, height: 66, borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28,
+                  background: CIRCLE_GRADIENTS[idx % CIRCLE_GRADIENTS.length],
+                  border: isActive ? '3px solid #F5B731' : '2.5px solid rgba(255,255,255,0.08)',
+                  boxShadow: isActive ? '0 0 0 2px rgba(245,183,49,0.25), 0 8px 24px rgba(0,0,0,0.28)' : '0 4px 16px rgba(0,0,0,0.20)',
+                  transition: 'all 0.2s ease', position: 'relative',
+                }}>
+                  {emoji}
+                  {isActive && (
+                    <span style={{ position: 'absolute', bottom: -2, right: -2, width: 18, height: 18, borderRadius: '50%', background: '#F5B731', border: '2px solid #fbf8ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 900, color: '#1a0e00' }}>✓</span>
+                  )}
+                </div>
+                <span style={{ fontSize: 11, fontWeight: isActive ? 800 : 500, color: isActive ? '#D4950A' : '#6B7280' }}>{label}</span>
+              </motion.button>
+            );
+          })}
+        </ArrowScrollRow>
 
-      {/* Content rows */}
-      <div className="max-w-7xl mx-auto px-10 py-10 space-y-14">
+        {/* Category pills */}
+        <div style={{ marginBottom: 28 }}>
+          <ArrowScrollRow gap={8} px={20}>
+            {CATEGORIES.map(cat => (
+              <motion.button key={cat.id} whileTap={{ scale: 0.9 }} onClick={() => setActiveCategory(cat.id)}
+                style={{
+                  flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5,
+                  padding: '9px 18px', borderRadius: 99, fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                  background: activeCategory === cat.id ? 'linear-gradient(135deg,#0F0E23,#1e1b4b)' : '#FFFFFF',
+                  border: activeCategory === cat.id ? '2px solid #0F0E23' : '2px solid #EBEBF0',
+                  color: activeCategory === cat.id ? '#fff' : '#4B5563',
+                  boxShadow: activeCategory === cat.id ? '0 4px 14px rgba(15,14,35,0.28)' : '0 2px 6px rgba(0,0,0,0.05)',
+                  transition: 'all 0.2s ease',
+                }}>
+                <span style={{ fontSize: 15, lineHeight: 1 }}>{cat.emoji}</span>
+                {cat.label}
+              </motion.button>
+            ))}
+          </ArrowScrollRow>
+        </div>
 
-        {keepFiltered.length > 0 && (
-          <KidsRow
-            title="Keep Watching"
-            emoji="🎬"
-            shows={keepFiltered}
-            favs={favs}
-            onFav={toggleFav}
-            accentColor="linear-gradient(90deg,#FF6B9D,#9B5DE5)"
-          />
+        {/* Continue Watching */}
+        {watching.length > 0 && (
+          <section style={{ marginBottom: 36 }}>
+            <SectionHeader title="🎬 Continue Watching" subtitle="Pick up where you left off" />
+            <ArrowScrollRow gap={12} px={20}>
+              {watching.map((s, i) => <LandscapeCard key={s.id} story={s} index={i} liked={liked.has(s.id)} onLike={toggleLike} />)}
+            </ArrowScrollRow>
+          </section>
         )}
 
-        <KidsRow
-          title="Aussie Adventures"
-          emoji="🇦🇺"
-          shows={aussieFiltered}
-          favs={favs}
-          onFav={toggleFav}
-          accentColor="linear-gradient(90deg,#FF6B35,#FFD166)"
-        />
+        {/* Featured — landscape banner cards */}
+        {featured.length > 0 && (
+          <section style={{ marginBottom: 36 }}>
+            <SectionHeader title="⭐ Featured Stories" subtitle="Hand-picked for tonight" />
+            <ArrowScrollRow gap={12} px={20}>
+              {featured.slice(0, 8).map((s, i) => <LandscapeCard key={s.id} story={s} index={i} liked={liked.has(s.id)} onLike={toggleLike} />)}
+            </ArrowScrollRow>
+          </section>
+        )}
 
-        <KidsRow
-          title="Today's Top Picks"
-          emoji="⭐"
-          shows={topFiltered}
-          favs={favs}
-          onFav={toggleFav}
-          accentColor="linear-gradient(90deg,#9B5DE5,#00B4D8)"
-        />
+        {/* Fantasy — 2-col poster grid */}
+        {fantasy.length > 0 && (
+          <section style={{ marginBottom: 36 }}>
+            <SectionHeader title="🧙 Fantasy Worlds" subtitle="Magical castles, dragons and enchanted forests" />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10, padding: '0 20px' }}>
+              {fantasy.slice(0, 4).map((s, i) => <SquareCard key={s.id} story={s} index={i} liked={liked.has(s.id)} onLike={toggleLike} />)}
+            </div>
+          </section>
+        )}
 
-        <KidsRow
-          title="Learn & Play"
-          emoji="📚"
-          shows={learnFiltered}
-          favs={favs}
-          onFav={toggleFav}
-          accentColor="linear-gradient(90deg,#06D6A0,#00B4D8)"
-        />
+        {/* Nature — landscape scroll */}
+        {nature.length > 0 && (
+          <section style={{ marginBottom: 36 }}>
+            <SectionHeader title="🌿 Nature & Animals" subtitle="Aussie bush, ocean friends and more" />
+            <ArrowScrollRow gap={12} px={20}>
+              {nature.map((s, i) => <LandscapeCard key={s.id} story={s} index={i} liked={liked.has(s.id)} onLike={toggleLike} />)}
+            </ArrowScrollRow>
+          </section>
+        )}
 
-        {/* Favourites (only shows if any saved) */}
-        {favs.size > 0 && (() => {
-          const all = [...KEEP_WATCHING, ...AUSSIE_PICKS, ...TOP_PICKS, ...LEARN_PLAY];
-          const deduped = Array.from(new Map(all.map((s) => [s.id, s])).values());
-          const favShows = deduped.filter((s) => favs.has(s.id));
-          return (
-            <KidsRow
-              title="My Favourites"
-              emoji="💖"
-              shows={favShows}
-              favs={favs}
-              onFav={toggleFav}
-              accentColor="linear-gradient(90deg,#FF6B9D,#FFD166)"
-            />
-          );
-        })()}
+        {/* Adventure — 2-col poster grid */}
+        {adventure.length > 0 && (
+          <section style={{ marginBottom: 36 }}>
+            <SectionHeader title="⚔️ Big Adventures" subtitle="Brave heroes and daring journeys" />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10, padding: '0 20px' }}>
+              {adventure.slice(0, 4).map((s, i) => <SquareCard key={s.id} story={s} index={i} liked={liked.has(s.id)} onLike={toggleLike} />)}
+            </div>
+          </section>
+        )}
+
+        {/* All filtered (when a category is active) */}
+        {activeCategory !== 'all' && allFiltered.length > 0 && (
+          <section style={{ marginBottom: 36 }}>
+            <SectionHeader title={`${CATEGORIES.find(c => c.id === activeCategory)?.emoji} All ${CATEGORIES.find(c => c.id === activeCategory)?.label} Stories`} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 10, padding: '0 20px' }}>
+              {allFiltered.slice(0, 8).map((s, i) => <SquareCard key={s.id} story={s} index={i} liked={liked.has(s.id)} onLike={toggleLike} />)}
+            </div>
+          </section>
+        )}
+
+        {/* My Favourites */}
+        {likedShows.length > 0 && (
+          <section style={{ marginBottom: 36 }}>
+            <SectionHeader title="💖 My Favourites" subtitle={`${likedShows.length} saved stories`} />
+            <ArrowScrollRow gap={12} px={20}>
+              {likedShows.map((s, i) => <LandscapeCard key={s.id} story={s} index={i} liked={true} onLike={toggleLike} />)}
+            </ArrowScrollRow>
+          </section>
+        )}
+
+        {/* Parent CTA */}
+        <section style={{ margin: '8px 20px 0', borderRadius: 24, overflow: 'hidden', background: 'linear-gradient(135deg,#0F0E23,#1e1b4b,#2e1065)' }}>
+          <div style={{ position: 'relative', padding: '28px 28px' }}>
+            <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 80% 50%,rgba(245,183,49,0.18) 0%,transparent 60%)', pointerEvents: 'none' }} />
+            <p className="font-black uppercase tracking-widest text-xs mb-2" style={{ color: '#F5B731' }}>For Mums & Dads 👨‍👩‍👧</p>
+            <h3 className="text-white font-black text-2xl leading-tight mb-2">
+              Create a story<br />
+              <span style={{ color: '#F5B731' }}>in your voice 🎙️</span>
+            </h3>
+            <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13, marginBottom: 20, maxWidth: 280 }}>
+              Record once — HushTales AI turns it into a personalised animated bedtime story your little one will love.
+            </p>
+            <Link href="/generate">
+              <motion.button whileTap={{ scale: 0.95 }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 28px', borderRadius: 99, background: 'linear-gradient(135deg,#F5B731,#D4950A)', color: '#1a0e00', fontWeight: 900, fontSize: 14, border: 'none', cursor: 'pointer', boxShadow: '0 8px 28px rgba(245,183,49,0.4)', animation: 'playGlow 2.5s ease-in-out infinite' }}>
+                <Sparkles style={{ width: 16, height: 16 }} />
+                Start Creating 🎉
+              </motion.button>
+            </Link>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer style={{ textAlign: 'center', padding: '32px 20px 8px', color: '#9CA3AF', fontSize: 12 }}>
+          <p style={{ marginBottom: 4 }}>🐨 HushTales Kids — Safe · Australian · Ad-Free</p>
+          <p>
+            <Link href="/library" style={{ color: '#9CA3AF', textDecoration: 'none' }} className="hover:text-purple-500">
+              Parent Zone
+            </Link>
+            {' · '}© 2026 HushTales · Made with 💛 in Australia
+          </p>
+        </footer>
+
       </div>
-
-      <ParentCta />
-
-      {/* Footer */}
-      <footer className="text-center py-8 text-gray-400 text-xs border-t border-gray-100 bg-white">
-        <p className="mb-1">🐨 HushTales Kids — Safe, Australian, Ad-Free</p>
-        <p>
-          <Link href="/library" className="hover:text-purple-500 transition-colors">Parent Zone</Link>
-          {' · '}
-          <span>© 2026 HushTales</span>
-          {' · '}
-          <span>Made with 💛 in Australia</span>
-        </p>
-      </footer>
     </div>
   );
 }

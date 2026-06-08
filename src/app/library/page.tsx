@@ -1,8 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
+import { useState, useRef } from 'react';
 
 // ─── Assets ───────────────────────────────────────────────────────────────────
 const A = {
@@ -103,80 +102,6 @@ function ChevronDown() {
   );
 }
 
-// ─── Navbar ───────────────────────────────────────────────────────────────────
-
-function Navbar({ scrolled }: { scrolled: boolean }) {
-  return (
-    <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-        scrolled
-          ? 'bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-white/[0.06] shadow-xl'
-          : 'bg-transparent'
-      }`}
-      style={{ fontFamily: 'var(--font-plus-jakarta), sans-serif' }}
-    >
-      <div className="flex items-center gap-6 px-8 py-4">
-
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
-          <Logomark />
-          <span className="text-xl font-semibold text-white/90 tracking-tight group-hover:text-white transition-colors">
-            HushTales
-          </span>
-          <span className="text-xs font-semibold text-amber-400 bg-amber-400/10 border border-amber-400/30 px-2 py-0.5 rounded-full tracking-widest uppercase">
-            Home 2
-          </span>
-        </Link>
-
-        {/* Nav links — same 3 items as global navbar */}
-        <div className="hidden lg:flex items-center gap-1 ml-4">
-          {([
-            { href: '/home1',   label: 'Home 1'  },
-            { href: '/library', label: 'Home 2'  },
-            { href: '/kids',    label: '🐨 Kids' },
-          ] as const).map(({ href, label }) => (
-            <Link
-              key={href}
-              href={href}
-              className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                href === '/library'
-                  ? 'text-white bg-white/10'
-                  : 'text-white/55 hover:text-white hover:bg-white/10'
-              }`}
-            >
-              {label}
-            </Link>
-          ))}
-        </div>
-
-        <div className="flex-1" />
-
-        {/* Search */}
-        <div className="hidden md:flex items-center gap-2.5 bg-white/8 hover:bg-white/12 border border-white/10 rounded-full px-4 py-2 w-52 cursor-text transition-colors group">
-          <svg className="w-4 h-4 opacity-50 group-hover:opacity-70 transition-opacity" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-          <span className="text-sm text-white/40">Search stories…</span>
-        </div>
-
-        {/* Icons */}
-        <div className="flex items-center gap-2">
-          <button aria-label="Settings" className="w-9 h-9 rounded-full bg-white/8 hover:bg-white/15 flex items-center justify-center transition-colors">
-            <svg className="w-4 h-4 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-          </button>
-          <button aria-label="Notifications" className="w-9 h-9 rounded-full bg-white/8 hover:bg-white/15 flex items-center justify-center transition-colors relative">
-            <svg className="w-4 h-4 opacity-70" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-            <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-[#4f46e5] rounded-full" />
-          </button>
-          <button aria-label="Profile" className="relative w-9 h-9 ml-1">
-            <div className="w-full h-full rounded-full bg-gradient-to-br from-amber-400 to-amber-600 ring-2 ring-white/20 hover:ring-white/40 transition-all flex items-center justify-center">
-              <span className="text-black font-black text-xs">M</span>
-            </div>
-            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-[#0a0a0a]" />
-          </button>
-        </div>
-      </div>
-    </nav>
-  );
-}
 
 // ─── Hero ─────────────────────────────────────────────────────────────────────
 
@@ -459,22 +384,14 @@ function EpisodesSection({ sectionRef }: { sectionRef: React.RefObject<HTMLEleme
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function LibraryPage() {
-  const [scrolled, setScrolled] = useState(false);
   const episodesRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 60);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
 
   const scrollToEpisodes = () => {
     episodesRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   return (
-    <div className="bg-[#0a0a0a] min-h-screen">
-      <Navbar scrolled={scrolled} />
+    <div className="bg-[#0a0a0a] min-h-screen -mt-16">
       <Hero onScrollClick={scrollToEpisodes} />
       <EpisodesSection sectionRef={episodesRef} />
     </div>

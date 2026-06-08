@@ -31,7 +31,8 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-[#0f0f0f] text-[#faf7f2]">
         <Providers>
           <Navbar />
-          <main className="flex-1">{children}</main>
+          {/* pt-16 offsets the fixed navbar; full-screen hero pages use negative margin to reclaim it */}
+          <main className="flex-1 pt-16">{children}</main>
         </Providers>
       </body>
     </html>
