@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Play, Plus, Info, Star, ChevronLeft, ChevronRight,
-  Search, Bell, User, Volume2, VolumeX, Check,
+  Search, Volume2, VolumeX, Check,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -557,63 +557,19 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
   );
 }
 
-// ─── Streaming Nav ────────────────────────────────────────────────────────────
-function StreamingNav({ onSearch }: { onSearch: () => void }) {
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 60);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  return (
-    <div className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 md:px-16 h-16 transition-all duration-500 ${
-      scrolled ? 'bg-[#080808]/97 shadow-2xl' : 'bg-transparent'
-    }`}>
-      <div className="flex items-center gap-8">
-        <Link href="/" className="flex items-center gap-1 shrink-0">
-          <span className="font-black text-xl tracking-tight" style={{ color: '#E50914' }}>HUSH</span>
-          <span className="font-black text-xl tracking-tight text-white">TALES</span>
-        </Link>
-        <nav className="hidden lg:flex items-center gap-6">
-          {[
-            ['Home',     '/home3'],
-            ['Series',   '/library'],
-            ['Stories',  '/home1'],
-            ['🐨 Kids',  '/kids'],
-            ['Create',   '/generate'],
-          ].map(([label, href]) => (
-            <Link key={href} href={href} className="text-white/65 hover:text-white text-sm font-medium transition-colors">{label}</Link>
-          ))}
-        </nav>
-      </div>
-      <div className="flex items-center gap-4">
-        <button onClick={onSearch} className="text-white/65 hover:text-white transition-colors cursor-pointer">
-          <Search className="w-5 h-5" />
-        </button>
-        <button className="text-white/65 hover:text-white transition-colors cursor-pointer">
-          <Bell className="w-5 h-5" />
-        </button>
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center cursor-pointer"
-          style={{ background: 'linear-gradient(135deg,#E50914,#b91c1c)' }}>
-          <User className="w-4 h-4 text-white" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function Home3Page() {
-  const [muted, setMuted]         = useState(true);
+  const [muted, setMuted]           = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
   const { list: watchlist, toggle: toggleWatchlist } = useWatchlist();
 
   return (
     <div className="min-h-screen -mt-16" style={{ background: '#080808', fontFamily: 'var(--font-nunito), sans-serif' }}>
-      <StreamingNav onSearch={() => setSearchOpen(true)} />
+      {/* Search trigger — floats beside the global navbar */}
+      <button onClick={() => setSearchOpen(true)}
+        className="fixed top-4 right-16 z-40 text-white/60 hover:text-white transition-colors cursor-pointer hidden md:block">
+        <Search className="w-5 h-5" />
+      </button>
 
       <HeroSection muted={muted} setMuted={setMuted} />
 
