@@ -2,110 +2,397 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState, useEffect } from 'react';
-import { Menu, X, BookOpen } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { BookOpen, Search, Bell, Menu, X, ChevronDown, Sparkles } from 'lucide-react';
 
-const links = [
-  { href: '/home1', label: 'Home 1' },
-  { href: '/home2', label: 'Home 2' },
-  { href: '/home3', label: 'Home 3' },
-  { href: '/kids',  label: '🐨 Kids' },
+const AMBER  = '#F59E0B';
+const VIOLET = '#7c3aed';
+
+// ─── Nav links ────────────────────────────────────────────────────────────────
+type NavItem =
+  | { label: string; href: string; dropdown?: never }
+  | { label: string; href?: never; dropdown: { label: string; href: string; tag?: string }[] };
+
+const NAV_ITEMS: NavItem[] = [
+  { label: 'Home',     href: '/home3'    },
+  { label: 'Stories',  href: '/library'  },
+  {
+    label: 'Browse',
+    dropdown: [
+      { label: 'New & Popular',   href: '/library',   tag: 'NEW'  },
+      { label: 'Fantasy',         href: '/library'              },
+      { label: 'Adventure',       href: '/library'              },
+      { label: 'Bedtime Stories', href: '/library'              },
+      { label: 'Originals',       href: '/library',   tag: 'ONLY HERE' },
+    ],
+  },
+  { label: 'Kids',     href: '/kids'     },
+  { label: 'Profiles', href: '/profiles' },
 ];
 
 export default function Navbar() {
-  const pathname = usePathname();
-  const [open, setOpen] = useState(false);
+  const pathname   = usePathname();
   const [scrolled, setScrolled] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen]   = useState(false);
+  const searchRef  = useRef<HTMLInputElement>(null);
+  const dropRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Scroll detection
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 50);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    const fn = () => setScrolled(window.scrollY > 40);
+    fn();
+    window.addEventListener('scroll', fn, { passive: true });
+    return () => window.removeEventListener('scroll', fn);
   }, []);
 
-  const hasBg = scrolled || open;
+  // Focus search input when opened
+  useEffect(() => {
+    if (searchOpen) searchRef.current?.focus();
+  }, [searchOpen]);
+
+  // Close mobile on route change
+  useEffect(() => {
+    setMobileOpen(false);
+    setSearchOpen(false);
+  }, [pathname]);
+
+  function openDrop(label: string) {
+    if (dropRef.current) clearTimeout(dropRef.current);
+    setOpenDropdown(label);
+  }
+  function closeDrop() {
+    dropRef.current = setTimeout(() => setOpenDropdown(null), 120);
+  }
+  function keepDrop() {
+    if (dropRef.current) clearTimeout(dropRef.current);
+  }
+
+  const hasBg = scrolled || mobileOpen;
 
   return (
-    <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-        hasBg
-          ? 'bg-[#0a091c]/97 backdrop-blur-xl border-b border-white/[0.06] shadow-2xl'
-          : 'bg-transparent'
-      }`}
-    >
-      <div className="max-w-7xl mx-auto px-5 sm:px-8">
-        <div className="flex items-center justify-between h-16">
+    <>
+      <nav
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+          hasBg
+            ? 'bg-[#080808]/95 backdrop-blur-xl border-b border-white/[0.05] shadow-2xl'
+            : 'bg-gradient-to-b from-[rgba(0,0,0,0.72)] to-transparent'
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-5 sm:px-8">
+          <div className="flex items-center h-16 gap-8">
 
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
-            <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center shadow-lg"
-              style={{ background: 'rgba(245,183,49,0.18)', border: '1px solid rgba(245,183,49,0.35)' }}
+            {/* ── Logo ────────────────────────────────────────────────────── */}
+            <Link
+              href="/home3"
+              className="flex items-center gap-2.5 shrink-0 group mr-2"
             >
-              <BookOpen className="w-4 h-4" style={{ color: '#F5B731' }} />
+              <div
+                className="w-8 h-8 rounded-xl flex items-center justify-center shadow-lg transition-transform duration-200 group-hover:scale-105"
+                style={{
+                  background: `linear-gradient(135deg, ${VIOLET}55, ${VIOLET}22)`,
+                  border: `1px solid ${VIOLET}55`,
+                  boxShadow: `0 0 16px ${VIOLET}30`,
+                }}
+              >
+                <BookOpen className="w-4 h-4" style={{ color: AMBER }} />
+              </div>
+              <span
+                className="text-[17px] font-black tracking-tight text-white transition-colors duration-200 group-hover:text-amber-400"
+              >
+                HushTales
+              </span>
+            </Link>
+
+            {/* ── Desktop nav links ────────────────────────────────────────── */}
+            <div className="hidden md:flex items-center gap-0.5 flex-1">
+              {NAV_ITEMS.map(item => {
+                const isActive = item.href ? pathname === item.href || (item.href === '/home3' && pathname === '/') : false;
+                const hasDropdown = !!item.dropdown;
+
+                if (hasDropdown) {
+                  return (
+                    <div
+                      key={item.label}
+                      className="relative"
+                      onMouseEnter={() => openDrop(item.label)}
+                      onMouseLeave={closeDrop}
+                    >
+                      <button
+                        className="flex items-center gap-1 px-3.5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 text-white/60 hover:text-white focus:outline-none"
+                      >
+                        {item.label}
+                        <motion.span
+                          animate={{ rotate: openDropdown === item.label ? 180 : 0 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <ChevronDown className="w-3.5 h-3.5 opacity-60" />
+                        </motion.span>
+                      </button>
+
+                      <AnimatePresence>
+                        {openDropdown === item.label && (
+                          <motion.div
+                            key="drop"
+                            initial={{ opacity: 0, y: 6, scale: 0.97 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 4, scale: 0.97 }}
+                            transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+                            onMouseEnter={keepDrop}
+                            onMouseLeave={closeDrop}
+                            className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-52 rounded-2xl overflow-hidden"
+                            style={{
+                              background: 'rgba(12,11,28,0.97)',
+                              border: '1px solid rgba(255,255,255,0.09)',
+                              boxShadow: '0 20px 48px rgba(0,0,0,0.55), 0 0 0 1px rgba(124,58,237,0.12)',
+                              backdropFilter: 'blur(20px)',
+                            }}
+                          >
+                            {/* Violet top line */}
+                            <div className="h-[2px] w-full" style={{ background: `linear-gradient(90deg, ${VIOLET}, transparent)` }} />
+                            <div className="py-2">
+                              {item.dropdown.map(sub => (
+                                <Link
+                                  key={sub.href + sub.label}
+                                  href={sub.href}
+                                  onClick={() => setOpenDropdown(null)}
+                                  className="flex items-center justify-between px-4 py-2.5 text-sm font-medium text-white/60 hover:text-white hover:bg-white/[0.06] transition-all duration-150"
+                                >
+                                  {sub.label}
+                                  {sub.tag && (
+                                    <span
+                                      className="text-[9px] font-black tracking-widest px-1.5 py-0.5 rounded"
+                                      style={{ background: AMBER, color: '#0a0a0a' }}
+                                    >
+                                      {sub.tag}
+                                    </span>
+                                  )}
+                                </Link>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  );
+                }
+
+                return (
+                  <Link
+                    key={item.label}
+                    href={item.href!}
+                    className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                      isActive
+                        ? 'text-white'
+                        : 'text-white/55 hover:text-white hover:bg-white/[0.06]'
+                    }`}
+                    style={isActive ? { textShadow: '0 0 14px rgba(255,255,255,0.35)' } : {}}
+                  >
+                    {isActive && (
+                      <span className="sr-only">(current)</span>
+                    )}
+                    {item.label}
+                    {isActive && (
+                      <motion.span
+                        layoutId="nav-indicator"
+                        className="block h-[2px] mt-0.5 rounded-full"
+                        style={{ background: AMBER }}
+                        transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                      />
+                    )}
+                  </Link>
+                );
+              })}
             </div>
-            <span className="text-lg font-black text-white tracking-tight group-hover:text-amber-300 transition-colors">
-              HushTales
-            </span>
-          </Link>
 
-          {/* Desktop links */}
-          <div className="hidden md:flex items-center gap-1">
-            {links.map(({ href, label }) => (
-              <Link
-                key={href}
-                href={href}
-                className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 ${
-                  pathname === href
-                    ? 'text-[#1a0e00] shadow-lg'
-                    : 'text-white/60 hover:text-white hover:bg-white/8'
-                }`}
-                style={pathname === href
-                  ? { background: 'linear-gradient(135deg,#F5B731,#D4950A)', boxShadow: '0 4px 14px rgba(245,183,49,0.4)' }
-                  : {}}
+            {/* ── Right side actions ───────────────────────────────────────── */}
+            <div className="hidden md:flex items-center gap-1 ml-auto">
+
+              {/* Search */}
+              <AnimatePresence mode="wait">
+                {searchOpen ? (
+                  <motion.div
+                    key="search-open"
+                    initial={{ width: 32, opacity: 0 }}
+                    animate={{ width: 200, opacity: 1 }}
+                    exit={{ width: 32, opacity: 0 }}
+                    transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                    className="flex items-center gap-2 rounded-lg overflow-hidden"
+                    style={{
+                      background: 'rgba(255,255,255,0.07)',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                    }}
+                  >
+                    <Search className="w-4 h-4 text-white/50 ml-2.5 flex-shrink-0" />
+                    <input
+                      ref={searchRef}
+                      onBlur={() => setSearchOpen(false)}
+                      placeholder="Titles, themes…"
+                      className="bg-transparent text-white text-sm outline-none placeholder-white/28 py-1.5 pr-2 w-full"
+                    />
+                  </motion.div>
+                ) : (
+                  <motion.button
+                    key="search-icon"
+                    onClick={() => setSearchOpen(true)}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.94 }}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg text-white/50 hover:text-white transition-colors focus:outline-none"
+                  >
+                    <Search className="w-4 h-4" />
+                  </motion.button>
+                )}
+              </AnimatePresence>
+
+              {/* Notifications */}
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.94 }}
+                className="relative w-8 h-8 flex items-center justify-center rounded-lg text-white/50 hover:text-white transition-colors focus:outline-none"
               >
-                {label}
-              </Link>
-            ))}
-          </div>
+                <Bell className="w-4 h-4" />
+                {/* Dot badge */}
+                <span
+                  className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full"
+                  style={{ background: AMBER }}
+                />
+              </motion.button>
 
-          {/* Mobile hamburger */}
-          <button
-            onClick={() => setOpen((v) => !v)}
-            aria-label={open ? 'Close menu' : 'Open menu'}
-            className="md:hidden p-2 rounded-xl text-white/70 hover:text-white transition-colors"
-            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.10)' }}
-          >
-            {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile menu */}
-      {open && (
-        <div className="md:hidden border-t border-white/[0.06]" style={{ background: 'rgba(10,9,28,0.98)' }}>
-          <div className="px-5 py-4 flex flex-col gap-2">
-            {links.map(({ href, label }) => (
-              <Link
-                key={href}
-                href={href}
-                onClick={() => setOpen(false)}
-                className={`px-4 py-3 rounded-2xl text-sm font-semibold transition-all ${
-                  pathname === href
-                    ? 'text-[#1a0e00]'
-                    : 'text-white/60 hover:text-white hover:bg-white/8'
-                }`}
-                style={pathname === href
-                  ? { background: 'linear-gradient(135deg,#F5B731,#D4950A)' }
-                  : {}}
-              >
-                {label}
+              {/* Create Story CTA */}
+              <Link href="/generate">
+                <motion.div
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="ml-1 flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-black text-white cursor-pointer"
+                  style={{
+                    background: `linear-gradient(135deg, ${VIOLET}, #4f46e5)`,
+                    boxShadow: `0 0 18px ${VIOLET}45`,
+                  }}
+                >
+                  <Sparkles className="w-3 h-3" />
+                  Create
+                </motion.div>
               </Link>
-            ))}
+
+              {/* Profile avatar */}
+              <Link href="/profiles">
+                <motion.div
+                  whileHover={{ scale: 1.08 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="ml-1 w-8 h-8 rounded-lg flex items-center justify-center text-sm font-black cursor-pointer"
+                  style={{
+                    background: `${VIOLET}28`,
+                    border: `1.5px solid ${VIOLET}55`,
+                    color: AMBER,
+                  }}
+                >
+                  M
+                </motion.div>
+              </Link>
+            </div>
+
+            {/* ── Mobile hamburger ─────────────────────────────────────────── */}
+            <button
+              onClick={() => setMobileOpen(v => !v)}
+              aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+              className="md:hidden ml-auto p-2 rounded-xl text-white/65 hover:text-white transition-colors focus:outline-none"
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.09)' }}
+            >
+              <AnimatePresence mode="wait" initial={false}>
+                {mobileOpen
+                  ? <motion.span key="x"  initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.15 }} className="block"><X    className="w-5 h-5" /></motion.span>
+                  : <motion.span key="hm" initial={{ rotate:  90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.15 }} className="block"><Menu className="w-5 h-5" /></motion.span>
+                }
+              </AnimatePresence>
+            </button>
+
           </div>
         </div>
-      )}
-    </nav>
+
+        {/* ── Mobile menu ──────────────────────────────────────────────────── */}
+        <AnimatePresence>
+          {mobileOpen && (
+            <motion.div
+              key="mobile-menu"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              className="md:hidden overflow-hidden border-t border-white/[0.05]"
+              style={{ background: 'rgba(8,8,8,0.98)', backdropFilter: 'blur(20px)' }}
+            >
+              <div className="px-5 py-4 flex flex-col gap-1">
+                {NAV_ITEMS.map(item => {
+                  if (item.dropdown) {
+                    return (
+                      <div key={item.label}>
+                        <p className="px-3 pt-3 pb-1.5 text-[10px] font-black uppercase tracking-widest text-white/25">
+                          {item.label}
+                        </p>
+                        {item.dropdown.map(sub => (
+                          <Link
+                            key={sub.href + sub.label}
+                            href={sub.href}
+                            className="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium text-white/55 hover:text-white hover:bg-white/[0.06] transition-all"
+                          >
+                            {sub.label}
+                            {sub.tag && (
+                              <span
+                                className="text-[9px] font-black tracking-widest px-1.5 py-0.5 rounded"
+                                style={{ background: AMBER, color: '#0a0a0a' }}
+                              >
+                                {sub.tag}
+                              </span>
+                            )}
+                          </Link>
+                        ))}
+                      </div>
+                    );
+                  }
+                  const isActive = item.href ? pathname === item.href || (item.href === '/home3' && pathname === '/') : false;
+                  return (
+                    <Link
+                      key={item.label}
+                      href={item.href!}
+                      className={`px-3 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                        isActive
+                          ? 'text-white'
+                          : 'text-white/55 hover:text-white hover:bg-white/[0.06]'
+                      }`}
+                      style={isActive ? { background: `${VIOLET}18`, borderLeft: `3px solid ${AMBER}` } : {}}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                })}
+
+                {/* Mobile CTA */}
+                <div className="pt-3 mt-1 border-t border-white/[0.06] flex gap-2">
+                  <Link href="/generate" className="flex-1">
+                    <div
+                      className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-black text-white"
+                      style={{ background: `linear-gradient(135deg, ${VIOLET}, #4f46e5)` }}
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      Create Story
+                    </div>
+                  </Link>
+                  <Link href="/profiles">
+                    <div
+                      className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black"
+                      style={{ background: `${VIOLET}28`, border: `1.5px solid ${VIOLET}55`, color: AMBER }}
+                    >
+                      M
+                    </div>
+                  </Link>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </nav>
+    </>
   );
 }
