@@ -1,14 +1,13 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import { getJobs } from '@/lib/api';
-import { BookOpen, Loader2, AlertCircle, Play } from 'lucide-react';
+import Link from 'next/link';
+import { BookOpen, Loader2, AlertCircle, Play, LogIn } from 'lucide-react';
+import { useJobs } from '@/hooks/useJobs';
+import { isUnauthorized } from '@/lib/api';
 
 export default function Home() {
-  const { data: jobs, isLoading, isError, error } = useQuery({
-    queryKey: ['jobs'],
-    queryFn: getJobs,
-  });
+  const { data: jobs, isLoading, isError, error } = useJobs();
+  const unauthorized = isUnauthorized(error);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -37,7 +36,24 @@ export default function Home() {
           </div>
         )}
 
-        {isError && (
+        {unauthorized && (
+          <div className="flex flex-col items-start gap-3 bg-white/5 border border-white/10 rounded-2xl px-6 py-8 max-w-md">
+            <p className="text-white font-semibold">Sign in to see your stories</p>
+            <p className="text-white/50 text-sm">
+              Your library is private. Sign in to view and create stories.
+            </p>
+            <Link
+              href="/auth/login?redirect=/"
+              className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white"
+              style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}
+            >
+              <LogIn className="w-4 h-4" />
+              Sign In
+            </Link>
+          </div>
+        )}
+
+        {isError && !unauthorized && (
           <div className="flex items-center gap-3 text-red-400 bg-red-400/10 rounded-xl px-4 py-3">
             <AlertCircle className="w-5 h-5 shrink-0" />
             <span className="text-sm">
@@ -59,11 +75,11 @@ export default function Home() {
               >
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <p className="text-white text-sm font-medium line-clamp-2 flex-1">
-                    {job.script_text || 'Untitled Story'}
+                    {job.title || job.script_text || 'Untitled Story'}
                   </p>
                   <span
                     className={`text-xs px-2 py-1 rounded-full shrink-0 font-medium ${
-                      job.status === 'completed'
+                      job.status === 'complete'
                         ? 'bg-green-500/20 text-green-400'
                         : job.status === 'failed'
                         ? 'bg-red-500/20 text-red-400'
@@ -78,16 +94,14 @@ export default function Home() {
                   {new Date(job.created_at).toLocaleDateString()}
                 </p>
 
-                {job.cloudfront_url && (
-                  <a
-                    href={`/player/${job.job_id}`}
-                    aria-label={`Play story ${job.job_id}`}
-                    className="flex items-center gap-2 text-amber-400 text-sm font-medium hover:text-amber-300 transition-colors"
-                  >
-                    <Play className="w-4 h-4" />
-                    Watch
-                  </a>
-                )}
+                <Link
+                  href={`/player/${job.job_id}`}
+                  aria-label={`Open story ${job.title ?? job.job_id}`}
+                  className="flex items-center gap-2 text-amber-400 text-sm font-medium hover:text-amber-300 transition-colors"
+                >
+                  <Play className="w-4 h-4" />
+                  {job.status === 'complete' ? 'Watch' : 'View'}
+                </Link>
               </div>
             ))}
           </div>

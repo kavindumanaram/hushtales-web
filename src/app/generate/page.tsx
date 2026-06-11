@@ -3,11 +3,17 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Sparkles, Wand2, Mic, Shuffle, Check, Play,
   Zap, Moon, Smile, Crown, Feather, Flame, Heart,
+  AlertCircle, Loader2, ArrowLeft,
 } from 'lucide-react';
+import { useCharacters } from '@/hooks/useCharacters';
+import { useGenerateStory, useSubmitJob } from '@/hooks/useGenerate';
+import { useStore } from '@/lib/store';
+import { isUnauthorized } from '@/lib/api';
 
 // ─── Brand tokens (match home3 exactly) ───────────────────────────────────────
 const AMBER  = '#F59E0B';
@@ -19,19 +25,12 @@ const WAVE_D   = [0, .08, .16, .04, .20, .12, .24, .06, .18, .02, .14, .22, .10,
 const WAVE_DUR = [.40, .35, .45, .38, .42, .36, .44, .40, .38, .46, .34, .42, .40, .36, .44, .38, .42, .34, .46, .40];
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
-type Child  = { id: string; name: string; age: number };
+type CharacterOption = { id: string; name: string };
 type Theme  = { id: string; label: string; tagline: string; image: string };
 type Tone   = { id: string; label: string; Icon: React.ComponentType<{ className?: string }> };
 type Length = { id: string; label: string; runtime: string };
 
 // ─── Data ──────────────────────────────────────────────────────────────────────
-const CHILDREN: Child[] = [
-  { id: 'emma',   name: 'Emma',   age: 5 },
-  { id: 'liam',   name: 'Liam',   age: 7 },
-  { id: 'sofia',  name: 'Sofia',  age: 4 },
-  { id: 'oliver', name: 'Oliver', age: 6 },
-];
-
 const THEMES: Theme[] = [
   { id: 'fantasy',   label: 'Fantasy',    tagline: 'Dragons & enchanted kingdoms',    image: '/images/banners/banner5.jpeg' },
   { id: 'adventure', label: 'Adventure',  tagline: 'Daring quests & hidden treasures', image: '/images/posters/poster4.jpeg' },
@@ -74,6 +73,21 @@ const COMBOS = [
   { theme: 'outback',   tone: 'exciting',  length: 'short'  },
 ];
 
+// ─── API value mapping ─────────────────────────────────────────────────────────
+// The UI offers richer choices than the backend enums; map to nearest valid value.
+const THEME_MAP: Record<string, string> = {
+  fantasy: 'dragons', adventure: 'jungle', space: 'space', ocean: 'ocean',
+  jungle: 'jungle', fairytale: 'fairy_tale', superhero: 'robots',
+  dinosaurs: 'dinosaurs', robots: 'robots', nature: 'farm', outback: 'jungle',
+};
+const TONE_MAP: Record<string, string> = {
+  gentle: 'gentle', funny: 'funny', magical: 'magical', fairytale: 'magical',
+  exciting: 'adventurous', poetic: 'gentle', cozy: 'gentle', epic: 'adventurous',
+};
+const LENGTH_MAP: Record<string, string> = {
+  mini: 'short', short: 'short', full: 'full', series: 'full',
+};
+
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 function fmtTime(s: number) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -115,17 +129,39 @@ function SLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ─── Child row (shared between modes) ─────────────────────────────────────────
-function ChildRow({
+// ─── Character row (shared between modes) ─────────────────────────────────────
+function CharacterRow({
+  items,
+  loading,
   selected,
   onSelect,
 }: {
+  items: CharacterOption[];
+  loading: boolean;
   selected: string | null;
   onSelect: (id: string) => void;
 }) {
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 text-white/30 text-sm">
+        <Loader2 className="w-4 h-4 animate-spin" />
+        Loading characters…
+      </div>
+    );
+  }
+
+  if (items.length === 0) {
+    return (
+      <p className="text-white/30 text-sm leading-relaxed">
+        No characters yet — we&rsquo;ll use a brave little hero. You can add your own
+        characters later.
+      </p>
+    );
+  }
+
   return (
-    <div className="flex gap-4 sm:gap-6">
-      {CHILDREN.map(c => {
+    <div className="flex gap-4 sm:gap-6 flex-wrap">
+      {items.map((c) => {
         const sel = selected === c.id;
         return (
           <motion.button
@@ -133,7 +169,7 @@ function ChildRow({
             whileHover={{ y: -2 }}
             whileTap={{ scale: 0.94 }}
             onClick={() => onSelect(c.id)}
-            className="flex flex-col items-center gap-1.5 flex-1 focus:outline-none group"
+            className="flex flex-col items-center gap-1.5 focus:outline-none group"
           >
             <div
               className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center transition-all duration-200"
@@ -144,33 +180,18 @@ function ChildRow({
               }}
             >
               <span
-                className="font-black text-lg select-none transition-colors"
+                className="font-black text-lg select-none transition-colors uppercase"
                 style={{ color: sel ? AMBER : 'rgba(255,255,255,0.28)' }}
               >
                 {c.name[0]}
               </span>
             </div>
-
             <span
               className="text-xs font-bold transition-colors"
               style={{ color: sel ? '#fff' : 'rgba(255,255,255,0.35)' }}
             >
               {c.name}
             </span>
-
-            <AnimatePresence>
-              {sel && (
-                <motion.span
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden text-[10px] font-bold"
-                  style={{ color: AMBER }}
-                >
-                  Age {c.age}
-                </motion.span>
-              )}
-            </AnimatePresence>
           </motion.button>
         );
       })}
@@ -203,7 +224,6 @@ function ThemeGrid({
               boxShadow: sel ? `0 0 16px rgba(245,183,49,0.16)` : 'none',
             }}
           >
-            {/* Image — very dark overlay so it's texture, not dominant */}
             <div
               className="absolute inset-0"
               style={{
@@ -212,20 +232,13 @@ function ThemeGrid({
                 backgroundPosition: 'center',
               }}
             />
-            {/* Amber wash on select */}
             {sel && (
-              <div
-                className="absolute inset-0"
-                style={{ background: 'rgba(245,183,49,0.05)' }}
-              />
+              <div className="absolute inset-0" style={{ background: 'rgba(245,183,49,0.05)' }} />
             )}
-            {/* Bottom scrim */}
             <div
               className="absolute inset-0"
               style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 55%)' }}
             />
-
-            {/* Label */}
             <div className="absolute bottom-0 left-0 right-0 px-3 pb-2.5">
               <p
                 className="font-black text-[12px] leading-none transition-colors"
@@ -235,8 +248,6 @@ function ThemeGrid({
               </p>
               <p className="text-white/38 text-[9px] mt-0.5 leading-snug">{t.tagline}</p>
             </div>
-
-            {/* Amber bottom line */}
             {sel && (
               <motion.div
                 initial={{ scaleX: 0 }}
@@ -245,8 +256,6 @@ function ThemeGrid({
                 style={{ background: AMBER }}
               />
             )}
-
-            {/* Check */}
             {sel && (
               <motion.div
                 initial={{ scale: 0 }}
@@ -266,6 +275,19 @@ function ThemeGrid({
 
 // ─── Page ──────────────────────────────────────────────────────────────────────
 export default function GeneratePage() {
+  const router = useRouter();
+
+  const { data: characters, isLoading: charsLoading } = useCharacters();
+  const generateMutation = useGenerateStory();
+  const submitMutation = useSubmitJob();
+  const generateResult = useStore((s) => s.generateResult);
+  const setGenerateResult = useStore((s) => s.setGenerateResult);
+
+  const characterOptions: CharacterOption[] = (characters ?? []).map((c) => ({
+    id: c.character_id,
+    name: c.name,
+  }));
+
   const [mode,   setMode]   = useState<'ai' | 'voice'>('ai');
   const [child,  setChild]  = useState<string | null>(null);
   const [theme,  setTheme]  = useState<string | null>(null);
@@ -273,8 +295,8 @@ export default function GeneratePage() {
   const [length, setLength] = useState<string | null>(null);
 
   const [surprising, setSurprising] = useState(false);
-  const [generating, setGenerating] = useState(false);
   const [done,       setDone]       = useState(false);
+  const [errorMsg,   setErrorMsg]   = useState<string | null>(null);
 
   const [recording, setRecording] = useState(false);
   const [recSec,    setRecSec]    = useState(0);
@@ -282,26 +304,32 @@ export default function GeneratePage() {
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const activeChild  = CHILDREN.find(c => c.id === child);
+  const activeChar   = characterOptions.find(c => c.id === child) ?? null;
   const activeTheme  = THEMES.find(t => t.id === theme);
   const activeTone   = TONES.find(t => t.id === tone);
   const activeLength = LENGTHS.find(l => l.id === length);
 
-  const aiReady    = !!(child && theme && tone && length);
-  const voiceReady = !!(child && theme && recorded);
+  // Character selection is optional (backend defaults to a hero).
+  const aiReady    = !!(theme && tone && length);
+  const voiceReady = !!(theme && recorded);
   const ready      = mode === 'ai' ? aiReady : voiceReady;
+
+  const generating = generateMutation.isPending;
+  const submitting = submitMutation.isPending;
 
   const doneCount =
     mode === 'ai'
-      ? [child, theme, tone, length].filter(Boolean).length
-      : [child, theme, recorded || null].filter(Boolean).length;
-  const totalSteps = mode === 'ai' ? 4 : 3;
+      ? [theme, tone, length].filter(Boolean).length
+      : [theme, recorded || null].filter(Boolean).length;
+  const totalSteps = mode === 'ai' ? 3 : 2;
 
   function doSurprise() {
     if (surprising) return;
     setSurprising(true);
     const c = COMBOS[Math.floor(Math.random() * COMBOS.length)];
-    if (!child) setChild(CHILDREN[Math.floor(Math.random() * CHILDREN.length)].id);
+    if (!child && characterOptions.length > 0) {
+      setChild(characterOptions[Math.floor(Math.random() * characterOptions.length)].id);
+    }
     setTimeout(() => {
       setTheme(c.theme);
       setTone(c.tone);
@@ -325,17 +353,62 @@ export default function GeneratePage() {
 
   useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
 
-  function doGenerate() {
-    if (!ready || generating) return;
-    setGenerating(true);
-    setTimeout(() => { setGenerating(false); setDone(true); }, 2200);
+  // Clear any stale generate result when leaving/entering.
+  useEffect(() => {
+    return () => setGenerateResult(null);
+  }, [setGenerateResult]);
+
+  function handleApiError(err: unknown) {
+    if (isUnauthorized(err)) {
+      router.push('/auth/login?redirect=/generate');
+      return;
+    }
+    setErrorMsg(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+  }
+
+  async function doGenerate() {
+    if (!ready || generating || !theme) return;
+    setErrorMsg(null);
+    try {
+      await generateMutation.mutateAsync({
+        theme: THEME_MAP[theme] ?? theme,
+        tone: tone ? TONE_MAP[tone] ?? tone : undefined,
+        length: length ? LENGTH_MAP[length] : undefined,
+        character_name: activeChar?.name,
+        age_group: '3-6',
+      });
+    } catch (err) {
+      handleApiError(err);
+    }
+  }
+
+  async function doSubmit() {
+    if (!generateResult || submitting || !theme) return;
+    setErrorMsg(null);
+    try {
+      await submitMutation.mutateAsync({
+        script_text: generateResult.script_text,
+        title: generateResult.title,
+        theme: THEME_MAP[theme] ?? theme,
+        tone: tone ? TONE_MAP[tone] ?? tone : undefined,
+        length: length ? LENGTH_MAP[length] : undefined,
+        age_group: '3-6',
+        character_name: activeChar?.name,
+      });
+      setDone(true);
+    } catch (err) {
+      handleApiError(err);
+    }
   }
 
   function reset() {
     setChild(null); setTheme(null); setTone(null); setLength(null);
-    setDone(false); setGenerating(false);
+    setDone(false); setErrorMsg(null);
+    setGenerateResult(null);
     setRecorded(false); setRecording(false); setRecSec(0);
   }
+
+  const reviewing = !!generateResult && !done;
 
   // ─── Render ───────────────────────────────────────────────────────────────────
   return (
@@ -440,20 +513,21 @@ export default function GeneratePage() {
               transition={{ duration: 0.2 }}
               className="space-y-9"
             >
-
-              {/* For Who */}
               <section>
                 <SLabel>For Who</SLabel>
-                <ChildRow selected={child} onSelect={setChild} />
+                <CharacterRow
+                  items={characterOptions}
+                  loading={charsLoading}
+                  selected={child}
+                  onSelect={setChild}
+                />
               </section>
 
-              {/* World */}
               <section>
                 <SLabel>World</SLabel>
                 <ThemeGrid selected={theme} onSelect={setTheme} />
               </section>
 
-              {/* Mood */}
               <section>
                 <SLabel>Mood</SLabel>
                 <div className="flex flex-wrap gap-2">
@@ -481,7 +555,6 @@ export default function GeneratePage() {
                 </div>
               </section>
 
-              {/* Length */}
               <section>
                 <SLabel>Length</SLabel>
                 <div
@@ -524,7 +597,6 @@ export default function GeneratePage() {
                 </div>
               </section>
 
-              {/* Surprise Me — minimal ghost */}
               <motion.button
                 whileHover={{ opacity: 0.8 }}
                 whileTap={{ scale: 0.98 }}
@@ -545,7 +617,6 @@ export default function GeneratePage() {
                 </motion.span>
                 {surprising ? 'Picking a combination…' : 'Surprise me — random combo'}
               </motion.button>
-
             </motion.div>
           )}
 
@@ -559,20 +630,37 @@ export default function GeneratePage() {
               transition={{ duration: 0.2 }}
               className="space-y-9"
             >
+              {/* Notice: voice setup happens on /voice */}
+              <div
+                className="rounded-2xl p-4 flex items-start gap-3"
+                style={{ background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.18)' }}
+              >
+                <Mic className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: VIOLET }} />
+                <p className="text-white/55 text-xs leading-relaxed">
+                  Set up and clone your voice on the{' '}
+                  <Link href="/voice" className="font-bold underline" style={{ color: AMBER }}>
+                    Voice page
+                  </Link>{' '}
+                  first. Once your voice is ready, AI stories you create will be narrated in it
+                  automatically.
+                </p>
+              </div>
 
-              {/* For Who */}
               <section>
                 <SLabel>For Who</SLabel>
-                <ChildRow selected={child} onSelect={setChild} />
+                <CharacterRow
+                  items={characterOptions}
+                  loading={charsLoading}
+                  selected={child}
+                  onSelect={setChild}
+                />
               </section>
 
-              {/* World */}
               <section>
                 <SLabel>World</SLabel>
                 <ThemeGrid selected={theme} onSelect={setTheme} />
               </section>
 
-              {/* Record */}
               <section>
                 <SLabel>Your Recording</SLabel>
                 <div
@@ -582,10 +670,8 @@ export default function GeneratePage() {
                     border: '1px solid rgba(255,255,255,0.07)',
                   }}
                 >
-                  {/* Waveform */}
                   <Waveform active={recording} />
 
-                  {/* Status text */}
                   {!recording && !recorded && (
                     <p
                       className="text-sm font-medium text-center leading-relaxed"
@@ -600,10 +686,7 @@ export default function GeneratePage() {
                   )}
 
                   {recording && (
-                    <p
-                      className="text-sm font-black tabular-nums"
-                      style={{ color: AMBER }}
-                    >
+                    <p className="text-sm font-black tabular-nums" style={{ color: AMBER }}>
                       {fmtTime(recSec)}
                     </p>
                   )}
@@ -616,28 +699,22 @@ export default function GeneratePage() {
                       >
                         <Check className="w-2.5 h-2.5 text-black" />
                       </div>
-                      <span
-                        className="text-sm font-semibold"
-                        style={{ color: 'rgba(255,255,255,0.55)' }}
-                      >
+                      <span className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.55)' }}>
                         Saved — {fmtTime(recSec)}
                       </span>
                     </div>
                   )}
 
-                  {/* Mic button */}
                   {!recorded ? (
                     <motion.button
                       whileHover={{ scale: 1.06 }}
                       whileTap={{ scale: 0.93 }}
                       onClick={recording ? stopRecording : startRecording}
-                      className="relative w-18 h-18 rounded-full flex items-center justify-center focus:outline-none"
+                      className="relative rounded-full flex items-center justify-center focus:outline-none"
                       style={{
                         width: 72,
                         height: 72,
-                        background: recording
-                          ? 'rgba(239,68,68,0.12)'
-                          : 'rgba(245,183,49,0.10)',
+                        background: recording ? 'rgba(239,68,68,0.12)' : 'rgba(245,183,49,0.10)',
                         border: recording
                           ? '1.5px solid rgba(239,68,68,0.45)'
                           : `1.5px solid ${AMBER}55`,
@@ -652,10 +729,7 @@ export default function GeneratePage() {
                         />
                       )}
                       {recording ? (
-                        <div
-                          className="w-5 h-5 rounded-sm"
-                          style={{ background: '#ef4444' }}
-                        />
+                        <div className="w-5 h-5 rounded-sm" style={{ background: '#ef4444' }} />
                       ) : (
                         <Mic className="w-7 h-7" style={{ color: AMBER }} />
                       )}
@@ -665,31 +739,41 @@ export default function GeneratePage() {
                       onClick={() => { setRecorded(false); setRecSec(0); }}
                       className="text-sm font-medium transition-colors focus:outline-none"
                       style={{ color: 'rgba(255,255,255,0.28)' }}
-                      onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.55)')}
-                      onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.28)')}
                     >
                       Re-record
                     </button>
                   )}
 
-                  <p
-                    className="text-[10px] font-medium"
-                    style={{ color: 'rgba(255,255,255,0.18)' }}
-                  >
+                  <p className="text-[10px] font-medium" style={{ color: 'rgba(255,255,255,0.18)' }}>
                     {recording ? 'Tap to stop recording' : recorded ? '' : 'Tap the mic to begin'}
                   </p>
                 </div>
               </section>
-
             </motion.div>
           )}
 
+        </AnimatePresence>
+
+        {/* ── Error banner ───────────────────────────────────────────────────── */}
+        <AnimatePresence>
+          {errorMsg && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="mt-8 flex items-center gap-3 rounded-xl px-4 py-3"
+              style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.25)' }}
+            >
+              <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
+              <span className="text-red-300 text-sm">{errorMsg}</span>
+            </motion.div>
+          )}
         </AnimatePresence>
       </div>
 
       {/* ── Sticky CTA bar ────────────────────────────────────────────────────── */}
       <AnimatePresence>
-        {!done && (
+        {!done && !reviewing && (
           <motion.div
             key="cta"
             initial={{ y: 72 }}
@@ -701,17 +785,14 @@ export default function GeneratePage() {
             <div
               className="absolute inset-0"
               style={{
-                background:
-                  'linear-gradient(to top, rgba(8,8,8,1) 65%, rgba(8,8,8,0))',
+                background: 'linear-gradient(to top, rgba(8,8,8,1) 65%, rgba(8,8,8,0))',
                 backdropFilter: 'blur(12px)',
               }}
             />
             <div className="relative max-w-[640px] mx-auto flex items-center gap-3 px-6 py-4">
-
-              {/* Live chips */}
               <div className="flex-1 flex items-center gap-1.5 overflow-hidden min-w-0">
                 <AnimatePresence>
-                  {!activeChild && !activeTheme && !activeTone && !activeLength && !recorded && (
+                  {!activeChar && !activeTheme && !activeTone && !activeLength && !recorded && (
                     <motion.span
                       key="hint"
                       initial={{ opacity: 0 }}
@@ -723,25 +804,14 @@ export default function GeneratePage() {
                       Select above to begin
                     </motion.span>
                   )}
-                  {activeChild && (
-                    <Chip key="ch">{activeChild.name}</Chip>
-                  )}
-                  {activeTheme && (
-                    <Chip key="th">{activeTheme.label}</Chip>
-                  )}
-                  {activeTone && mode === 'ai' && (
-                    <Chip key="to">{activeTone.label}</Chip>
-                  )}
-                  {activeLength && mode === 'ai' && (
-                    <Chip key="le">{activeLength.runtime}</Chip>
-                  )}
-                  {recorded && mode === 'voice' && (
-                    <Chip key="re">Recorded</Chip>
-                  )}
+                  {activeChar && <Chip key="ch">{activeChar.name}</Chip>}
+                  {activeTheme && <Chip key="th">{activeTheme.label}</Chip>}
+                  {activeTone && mode === 'ai' && <Chip key="to">{activeTone.label}</Chip>}
+                  {activeLength && mode === 'ai' && <Chip key="le">{activeLength.runtime}</Chip>}
+                  {recorded && mode === 'voice' && <Chip key="re">Recorded</Chip>}
                 </AnimatePresence>
               </div>
 
-              {/* CTA */}
               <motion.button
                 whileHover={ready ? { scale: 1.04 } : {}}
                 whileTap={ready ? { scale: 0.97 } : {}}
@@ -759,34 +829,100 @@ export default function GeneratePage() {
               >
                 {generating ? (
                   <>
-                    <motion.span
-                      animate={{ rotate: 360 }}
-                      transition={{ repeat: Infinity, duration: 0.85, ease: 'linear' }}
-                      className="inline-flex"
-                    >
-                      <Sparkles className="w-3.5 h-3.5" />
-                    </motion.span>
-                    Creating…
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Writing…
                   </>
                 ) : (
                   <>
                     <Wand2 className="w-3.5 h-3.5" />
-                    {ready ? 'Create Story' : `${doneCount} / ${totalSteps}`}
+                    {ready ? 'Generate Story' : `${doneCount} / ${totalSteps}`}
                   </>
-                )}
-                {ready && !generating && (
-                  <motion.div
-                    className="absolute inset-0 pointer-events-none"
-                    animate={{ x: ['-100%', '100%'] }}
-                    transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-                    style={{
-                      background:
-                        'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)',
-                    }}
-                  />
                 )}
               </motion.button>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Review panel ───────────────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {reviewing && generateResult && (
+          <motion.div
+            key="review"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center px-6"
+            style={{ background: 'rgba(10,10,10,0.92)', backdropFilter: 'blur(24px)' }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 24, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              transition={{ type: 'spring', damping: 24, stiffness: 260 }}
+              className="max-w-md w-full rounded-3xl p-8"
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <Sparkles className="w-4 h-4" style={{ color: AMBER }} />
+                <span className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: AMBER }}>
+                  Review your story
+                </span>
+              </div>
+
+              <h2 className="text-white font-black text-xl mb-3">{generateResult.title}</h2>
+
+              <div
+                className="rounded-xl p-4 mb-2 max-h-52 overflow-y-auto"
+                style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.06)' }}
+              >
+                <p className="text-white/70 text-sm leading-relaxed whitespace-pre-wrap">
+                  {generateResult.script_text}
+                </p>
+              </div>
+              <p className="text-white/25 text-[11px] mb-6">
+                {generateResult.word_count} words
+              </p>
+
+              <div className="space-y-2.5">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={doSubmit}
+                  disabled={submitting}
+                  className="w-full py-3 rounded-xl font-black text-sm text-white flex items-center justify-center gap-2 disabled:opacity-70"
+                  style={{ background: `linear-gradient(135deg, ${VIOLET}, #4f46e5)` }}
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Creating video…
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-3.5 h-3.5" />
+                      Create This Story
+                    </>
+                  )}
+                </motion.button>
+                <button
+                  onClick={() => { setGenerateResult(null); setErrorMsg(null); }}
+                  disabled={submitting}
+                  className="w-full py-2.5 text-sm font-semibold flex items-center justify-center gap-1.5 transition-colors focus:outline-none disabled:opacity-50"
+                  style={{ color: 'rgba(255,255,255,0.4)' }}
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  Back to options
+                </button>
+              </div>
+
+              {errorMsg && (
+                <div className="mt-4 flex items-center gap-2 rounded-lg px-3 py-2"
+                  style={{ background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.25)' }}>
+                  <AlertCircle className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
+                  <span className="text-red-300 text-xs">{errorMsg}</span>
+                </div>
+              )}
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -800,20 +936,14 @@ export default function GeneratePage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[60] flex items-center justify-center px-6"
-            style={{
-              background: 'rgba(10,10,10,0.92)',
-              backdropFilter: 'blur(24px)',
-            }}
+            style={{ background: 'rgba(10,10,10,0.92)', backdropFilter: 'blur(24px)' }}
           >
             <motion.div
               initial={{ scale: 0.88, y: 24, opacity: 0 }}
               animate={{ scale: 1, y: 0, opacity: 1 }}
               transition={{ type: 'spring', damping: 22, stiffness: 250 }}
               className="max-w-sm w-full rounded-3xl p-10 text-center"
-              style={{
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)',
-              }}
+              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
             >
               <motion.div
                 animate={{ scale: [1, 1.08, 1] }}
@@ -829,16 +959,12 @@ export default function GeneratePage() {
 
               <h2 className="text-white font-black text-xl mb-2">Story on its way!</h2>
 
-              <p
-                className="text-sm leading-relaxed mb-8"
-                style={{ color: 'rgba(255,255,255,0.35)' }}
-              >
-                {activeChild?.name}&rsquo;s story is being crafted and animated.
-                It&rsquo;ll appear in your library soon.
+              <p className="text-sm leading-relaxed mb-8" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                Your story is being crafted and animated. It&rsquo;ll appear in your library soon.
               </p>
 
               <div className="space-y-2.5">
-                <Link href="/home3" className="block w-full">
+                <Link href="/" className="block w-full">
                   <motion.div
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
@@ -853,8 +979,6 @@ export default function GeneratePage() {
                   onClick={reset}
                   className="w-full py-2.5 text-sm font-semibold transition-colors focus:outline-none"
                   style={{ color: 'rgba(255,255,255,0.28)' }}
-                  onMouseEnter={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.55)')}
-                  onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,0.28)')}
                 >
                   Create Another
                 </button>

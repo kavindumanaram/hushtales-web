@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, Search, Bell, Menu, X, ChevronDown, Sparkles } from 'lucide-react';
+import { BookOpen, Search, Bell, Menu, X, ChevronDown, Sparkles, LogIn, LogOut } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 const AMBER  = '#F59E0B';
 const VIOLET = '#7c3aed';
@@ -33,12 +34,28 @@ const NAV_ITEMS: NavItem[] = [
 
 export default function Navbar() {
   const pathname   = usePathname();
+  const router     = useRouter();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [searchOpen, setSearchOpen]   = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const searchRef  = useRef<HTMLInputElement>(null);
   const dropRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { user, loading: authLoading, signOut } = useAuth();
+  const userInitial = (
+    user?.signInDetails?.loginId ?? user?.username ?? 'M'
+  ).charAt(0).toUpperCase();
+
+  // Redirect immediately for instant feedback; let token revocation finish in
+  // the background (otherwise sign-out appears to hang on the network call).
+  function handleSignOut() {
+    setProfileOpen(false);
+    setMobileOpen(false);
+    void signOut();
+    router.replace('/home3');
+  }
 
   // Scroll detection
   useEffect(() => {
@@ -57,6 +74,7 @@ export default function Navbar() {
   useEffect(() => {
     setMobileOpen(false);
     setSearchOpen(false);
+    setProfileOpen(false);
   }, [pathname]);
 
   function openDrop(label: string) {
@@ -260,37 +278,108 @@ export default function Navbar() {
                 />
               </motion.button>
 
-              {/* Create Story CTA */}
-              <Link href="/generate">
-                <motion.div
-                  whileHover={{ scale: 1.04 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="ml-1 flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-black text-white cursor-pointer"
-                  style={{
-                    background: `linear-gradient(135deg, ${VIOLET}, #4f46e5)`,
-                    boxShadow: `0 0 18px ${VIOLET}45`,
-                  }}
-                >
-                  <Sparkles className="w-3 h-3" />
-                  Create
-                </motion.div>
-              </Link>
+              {/* Signed-out: Sign In link only */}
+              {!authLoading && !user && (
+                <Link href="/auth/login">
+                  <motion.div
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.97 }}
+                    className="ml-1 flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-black text-white cursor-pointer"
+                    style={{
+                      background: `linear-gradient(135deg, ${VIOLET}, #4f46e5)`,
+                      boxShadow: `0 0 18px ${VIOLET}45`,
+                    }}
+                  >
+                    <LogIn className="w-3 h-3" />
+                    Sign In
+                  </motion.div>
+                </Link>
+              )}
 
-              {/* Profile avatar */}
-              <Link href="/profiles">
-                <motion.div
-                  whileHover={{ scale: 1.08 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="ml-1 w-8 h-8 rounded-lg flex items-center justify-center text-sm font-black cursor-pointer"
-                  style={{
-                    background: `${VIOLET}28`,
-                    border: `1.5px solid ${VIOLET}55`,
-                    color: AMBER,
-                  }}
-                >
-                  M
-                </motion.div>
-              </Link>
+              {/* Signed-in: Create CTA + profile dropdown */}
+              {user && (
+                <>
+                  <Link href="/generate">
+                    <motion.div
+                      whileHover={{ scale: 1.04 }}
+                      whileTap={{ scale: 0.97 }}
+                      className="ml-1 flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-black text-white cursor-pointer"
+                      style={{
+                        background: `linear-gradient(135deg, ${VIOLET}, #4f46e5)`,
+                        boxShadow: `0 0 18px ${VIOLET}45`,
+                      }}
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      Create
+                    </motion.div>
+                  </Link>
+
+                  <div className="relative ml-1">
+                    <motion.button
+                      onClick={() => setProfileOpen((v) => !v)}
+                      whileHover={{ scale: 1.08 }}
+                      whileTap={{ scale: 0.95 }}
+                      aria-label="Account menu"
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-black cursor-pointer focus:outline-none"
+                      style={{
+                        background: `${VIOLET}28`,
+                        border: `1.5px solid ${VIOLET}55`,
+                        color: AMBER,
+                      }}
+                    >
+                      {userInitial}
+                    </motion.button>
+
+                    <AnimatePresence>
+                      {profileOpen && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 6, scale: 0.97 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: 4, scale: 0.97 }}
+                          transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+                          className="absolute top-full right-0 mt-2 w-48 rounded-2xl overflow-hidden"
+                          style={{
+                            background: 'rgba(12,11,28,0.97)',
+                            border: '1px solid rgba(255,255,255,0.09)',
+                            boxShadow: '0 20px 48px rgba(0,0,0,0.55)',
+                            backdropFilter: 'blur(20px)',
+                          }}
+                        >
+                          <div className="px-4 py-3 border-b border-white/[0.06]">
+                            <p className="text-white/40 text-[10px] font-bold uppercase tracking-wider">
+                              Signed in as
+                            </p>
+                            <p className="text-white text-sm font-semibold truncate">
+                              {user.signInDetails?.loginId ?? user.username}
+                            </p>
+                          </div>
+                          <Link
+                            href="/profiles"
+                            onClick={() => setProfileOpen(false)}
+                            className="block px-4 py-2.5 text-sm font-medium text-white/60 hover:text-white hover:bg-white/[0.06] transition-all"
+                          >
+                            Profiles
+                          </Link>
+                          <Link
+                            href="/voice"
+                            onClick={() => setProfileOpen(false)}
+                            className="block px-4 py-2.5 text-sm font-medium text-white/60 hover:text-white hover:bg-white/[0.06] transition-all"
+                          >
+                            Voice Setup
+                          </Link>
+                          <button
+                            onClick={handleSignOut}
+                            className="w-full flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white/60 hover:text-white hover:bg-white/[0.06] transition-all focus:outline-none"
+                          >
+                            <LogOut className="w-3.5 h-3.5" />
+                            Sign Out
+                          </button>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* ── Mobile hamburger ─────────────────────────────────────────── */}
@@ -370,23 +459,37 @@ export default function Navbar() {
 
                 {/* Mobile CTA */}
                 <div className="pt-3 mt-1 border-t border-white/[0.06] flex gap-2">
-                  <Link href="/generate" className="flex-1">
-                    <div
-                      className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-black text-white"
-                      style={{ background: `linear-gradient(135deg, ${VIOLET}, #4f46e5)` }}
-                    >
-                      <Sparkles className="w-3 h-3" />
-                      Create Story
-                    </div>
-                  </Link>
-                  <Link href="/profiles">
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black"
-                      style={{ background: `${VIOLET}28`, border: `1.5px solid ${VIOLET}55`, color: AMBER }}
-                    >
-                      M
-                    </div>
-                  </Link>
+                  {user ? (
+                    <>
+                      <Link href="/generate" className="flex-1">
+                        <div
+                          className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-black text-white"
+                          style={{ background: `linear-gradient(135deg, ${VIOLET}, #4f46e5)` }}
+                        >
+                          <Sparkles className="w-3 h-3" />
+                          Create Story
+                        </div>
+                      </Link>
+                      <button
+                        onClick={handleSignOut}
+                        aria-label="Sign out"
+                        className="w-10 h-10 rounded-xl flex items-center justify-center focus:outline-none"
+                        style={{ background: `${VIOLET}28`, border: `1.5px solid ${VIOLET}55`, color: AMBER }}
+                      >
+                        <LogOut className="w-4 h-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <Link href="/auth/login" className="flex-1">
+                      <div
+                        className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-black text-white"
+                        style={{ background: `linear-gradient(135deg, ${VIOLET}, #4f46e5)` }}
+                      >
+                        <LogIn className="w-3 h-3" />
+                        Sign In
+                      </div>
+                    </Link>
+                  )}
                 </div>
               </div>
             </motion.div>

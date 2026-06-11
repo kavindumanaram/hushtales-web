@@ -1,14 +1,19 @@
 /* eslint-disable @next/next/no-img-element */
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, createContext, useContext } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import ReactPlayer from 'react-player';
 import {
   Play, Plus, Info, Star, ChevronLeft, ChevronRight,
   Search, Volume2, VolumeX, Check, Clock,
-  Sparkles, Loader2, CheckCircle2, Wand2,
+  Sparkles, Loader2, CheckCircle2, Wand2, LogIn, X,
 } from 'lucide-react';
+import { useJobs } from '@/hooks/useJobs';
+import { useAuth } from '@/hooks/useAuth';
+import { isUnauthorized, type StoryJob } from '@/lib/api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Show = {
@@ -24,6 +29,7 @@ type Show = {
   video?: string;
   synopsis: string;
   badge?: string;
+  jobStatus?: string; // present for real stories
 };
 
 type BadgeType =
@@ -49,8 +55,8 @@ const CARD_H = 151; // 16:9
 const PORT_W = 162;
 const PORT_H = 243; // 2:3
 
-// ─── Show data ────────────────────────────────────────────────────────────────
-const SHOWS: Show[] = [
+// ─── Demo show data (fallback when the user has no real stories yet) ──────────
+const DEMO_SHOWS: Show[] = [
   {
     id: 'moonlit',
     title: 'The Moonlight Explorer',
@@ -136,9 +142,106 @@ const SHOWS: Show[] = [
   },
 ];
 
-const byId = (id: string) => SHOWS.find(s => s.id === id)!;
+const POSTER_FALLBACKS = [
+  '/images/posters/poster1.jpeg', '/images/posters/poster2.jpeg',
+  '/images/posters/poster3.jpeg', '/images/posters/poster4.jpeg',
+  '/images/posters/poster5.jpeg', '/images/posters/poster6.jpeg',
+];
+const BANNER_FALLBACKS = [
+  '/images/banners/banner1.jpeg', '/images/banners/banner2.jpeg',
+  '/images/banners/banner3.jpeg', '/images/banners/banner4.jpeg',
+  '/images/banners/banner5.jpeg', '/images/banners/banner6.jpeg',
+];
 
-const HERO_SLIDES = [SHOWS[0], SHOWS[1], SHOWS[2], SHOWS[4]];
+const cap = (s: string) => s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+// ─── Player context ───────────────────────────────────────────────────────────
+// open(show): plays the video inline if the story has one (demo or real
+// completed), otherwise routes to the status page for stories still rendering.
+const OpenPlayerCtx = createContext<(show: Show) => void>(() => {});
+const useOpenPlayer = () => useContext(OpenPlayerCtx);
+
+// ─── Video modal ──────────────────────────────────────────────────────────────
+function VideoModal({ show, onClose }: { show: Show; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = '';
+    };
+  }, [onClose]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[120] flex items-center justify-center p-4 md:p-10"
+      style={{ background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(12px)' }}
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.94, y: 16, opacity: 0 }}
+        animate={{ scale: 1, y: 0, opacity: 1 }}
+        exit={{ scale: 0.96, opacity: 0 }}
+        transition={{ type: 'spring', damping: 26, stiffness: 280 }}
+        className="relative w-full max-w-5xl rounded-2xl overflow-hidden"
+        style={{ background: '#000', border: '1px solid rgba(255,255,255,0.1)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full flex items-center justify-center cursor-pointer"
+          style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.2)' }}
+        >
+          <X className="w-4 h-4 text-white" />
+        </button>
+        <div className="relative w-full" style={{ aspectRatio: '16 / 9' }}>
+          <ReactPlayer
+            src={show.video}
+            controls
+            playing
+            width="100%"
+            height="100%"
+            playsInline
+            style={{ position: 'absolute', inset: 0 }}
+          />
+        </div>
+        <div className="px-5 py-4">
+          <h3 className="text-white font-black text-lg leading-tight">{show.title}</h3>
+          <div className="flex items-center gap-3 mt-1 text-xs text-white/45">
+            <span className="text-green-400 font-bold">{show.match} Match</span>
+            <span>{show.year}</span>
+            <span>{show.duration}</span>
+            <span className="capitalize">{show.genres.join(' · ')}</span>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// Map a real backend job → the Show shape this UI renders.
+function jobToShow(job: StoryJob, i: number): Show {
+  const poster = job.thumbnail_url || POSTER_FALLBACKS[i % POSTER_FALLBACKS.length];
+  const banner = job.thumbnail_url || BANNER_FALLBACKS[i % BANNER_FALLBACKS.length];
+  const genres = [job.theme, job.tone].filter(Boolean).map((g) => cap(g!));
+  return {
+    id: job.job_id,
+    title: job.title || 'Untitled Story',
+    year: new Date(job.created_at).getFullYear().toString(),
+    rating: '9.0',
+    match: '97%',
+    duration: job.length === 'full' ? '~60 sec' : '~30 sec',
+    genres: genres.length ? genres : ['Story'],
+    thumb: poster,
+    hero: banner,
+    video: job.status === 'complete' ? job.cloudfront_url || undefined : undefined,
+    synopsis: job.script_text || 'A personalised animated story, created just for you.',
+    jobStatus: job.status,
+  };
+}
 
 type RowDef = {
   label: string;
@@ -148,66 +251,32 @@ type RowDef = {
   accentColor?: string;
 };
 
-const ROWS: RowDef[] = [
-  {
-    label: 'New Releases',
-    subtitle: 'Fresh stories added this week',
-    ids: ['moonlit', 'seas', 'captain', 'aetheria'],
-    badgeType: 'new',
-    accentColor: '#E50914',
-  },
-  {
-    label: 'Trending Now',
-    subtitle: 'What families are watching right now',
-    ids: ['aetheria', 'moonlit', 'seas', 'barnaby', 'luna'],
-    badgeType: 'trending',
-    accentColor: '#C2410C',
-  },
-  {
-    label: 'Top Picks for You',
-    subtitle: 'Personalised based on your favourites',
-    ids: ['barnaby', 'luna', 'daisy', 'moonlit'],
-    badgeType: 'for-you',
-    accentColor: '#1565C0',
-  },
-  {
-    label: 'Fantasy & Adventure',
-    ids: ['aetheria', 'luna', 'seas', 'barnaby', 'captain', 'moonlit'],
-  },
-  {
-    label: 'Cozy Bedtime Stories',
-    ids: ['barnaby', 'daisy', 'kangaroo', 'luna'],
-  },
-  {
-    label: 'HushTales Originals',
-    subtitle: 'Exclusive stories, only on HushTales',
-    ids: ['moonlit', 'barnaby', 'aetheria'],
-    badgeType: 'original',
-    accentColor: '#6D28D9',
-  },
+const DEMO_ROWS: RowDef[] = [
+  { label: 'New Releases', subtitle: 'Fresh stories added this week', ids: ['moonlit', 'seas', 'captain', 'aetheria'], badgeType: 'new', accentColor: '#E50914' },
+  { label: 'Trending Now', subtitle: 'What families are watching right now', ids: ['aetheria', 'moonlit', 'seas', 'barnaby', 'luna'], badgeType: 'trending', accentColor: '#C2410C' },
+  { label: 'Top Picks for You', subtitle: 'Personalised based on your favourites', ids: ['barnaby', 'luna', 'daisy', 'moonlit'], badgeType: 'for-you', accentColor: '#1565C0' },
+  { label: 'Fantasy & Adventure', ids: ['aetheria', 'luna', 'seas', 'barnaby', 'captain', 'moonlit'] },
+  { label: 'Cozy Bedtime Stories', ids: ['barnaby', 'daisy', 'kangaroo', 'luna'] },
+  { label: 'HushTales Originals', subtitle: 'Exclusive stories, only on HushTales', ids: ['moonlit', 'barnaby', 'aetheria'], badgeType: 'original', accentColor: '#6D28D9' },
 ];
 
 type ProgressShow = Show & { watchedPercent: number; minutesLeft: number };
 
-const CONTINUE_WATCHING: ProgressShow[] = [
-  { ...byId('barnaby'), watchedPercent: 65, minutesLeft: 8  },
-  { ...byId('daisy'),   watchedPercent: 32, minutesLeft: 15 },
-  { ...byId('captain'), watchedPercent: 80, minutesLeft: 5  },
-  { ...byId('moonlit'), watchedPercent: 15, minutesLeft: 24 },
+const DEMO_CONTINUE: ProgressShow[] = [
+  { ...DEMO_SHOWS[5], watchedPercent: 65, minutesLeft: 8  },
+  { ...DEMO_SHOWS[2], watchedPercent: 32, minutesLeft: 15 },
+  { ...DEMO_SHOWS[6], watchedPercent: 80, minutesLeft: 5  },
+  { ...DEMO_SHOWS[0], watchedPercent: 15, minutesLeft: 24 },
 ];
 
-const IN_PROGRESS_STORY = {
-  title: "The Dragon's Garden",
-  childName: 'Emma',
-  theme: 'Fantasy · Adventure',
-  thumb: '/images/banners/banner4.jpeg',
-  startedAt: '2 hours ago',
-  progress: 67,
-  steps: [
-    { label: 'Story crafted',       done: true  },
-    { label: 'Voice generated',     done: true  },
-    { label: 'Rendering animation', done: false },
-  ],
+// In-progress status → label/progress for the real "creating" card.
+const PROGRESS_META: Record<string, { label: string; pct: number }> = {
+  pending: { label: 'Queued', pct: 12 },
+  processing: { label: 'Writing the script', pct: 30 },
+  submitted_to_heygen: { label: 'Sending to animation', pct: 50 },
+  polling: { label: 'Animating', pct: 70 },
+  ready_to_download: { label: 'Almost ready', pct: 90 },
+  downloading: { label: 'Almost ready', pct: 95 },
 };
 
 // ─── Watchlist hook ───────────────────────────────────────────────────────────
@@ -218,21 +287,25 @@ function useWatchlist() {
   return { list, toggle };
 }
 
-// ─── Hero (UNCHANGED) ─────────────────────────────────────────────────────────
-function HeroSection({ muted, setMuted }: { muted: boolean; setMuted: (v: boolean) => void }) {
+// ─── Hero ─────────────────────────────────────────────────────────────────────
+function HeroSection({
+  slides, muted, setMuted,
+}: { slides: Show[]; muted: boolean; setMuted: (v: boolean) => void }) {
+  const open = useOpenPlayer();
   const [idx, setIdx] = useState(0);
   const timerRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeVideoRef = useRef<HTMLVideoElement | null>(null);
-  const slide = HERO_SLIDES[idx];
+  const safeIdx = idx % slides.length;
+  const slide = slides[safeIdx];
 
   useEffect(() => {
     if (activeVideoRef.current) activeVideoRef.current.muted = muted;
   }, [muted]);
 
   useEffect(() => {
-    timerRef.current = setTimeout(() => setIdx(i => (i + 1) % HERO_SLIDES.length), 9000);
+    timerRef.current = setTimeout(() => setIdx(i => (i + 1) % slides.length), 9000);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [idx]);
+  }, [idx, slides.length]);
 
   const goto = (next: number) => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -242,19 +315,31 @@ function HeroSection({ muted, setMuted }: { muted: boolean; setMuted: (v: boolea
   return (
     <div className="relative w-full overflow-hidden" style={{ height: '100vh', minHeight: 640 }}>
       <AnimatePresence mode="sync">
-        <motion.video
-          key={slide.id}
-          ref={(el: HTMLVideoElement | null) => {
-            activeVideoRef.current = el;
-            if (el) { el.muted = muted; el.play().catch(() => {}); }
-          }}
-          src={slide.video}
-          autoPlay loop playsInline
-          className="absolute inset-0 w-full h-full object-cover"
-          style={{ objectPosition: 'center 30%', zIndex: 0 }}
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-          transition={{ duration: 0.75, ease: 'easeInOut' }}
-        />
+        {slide.video ? (
+          <motion.video
+            key={slide.id}
+            ref={(el: HTMLVideoElement | null) => {
+              activeVideoRef.current = el;
+              if (el) { el.muted = muted; el.play().catch(() => {}); }
+            }}
+            src={slide.video}
+            autoPlay loop playsInline
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ objectPosition: 'center 30%', zIndex: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.75, ease: 'easeInOut' }}
+          />
+        ) : (
+          <motion.img
+            key={slide.id}
+            src={slide.hero}
+            alt={slide.title}
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ objectPosition: 'center 30%', zIndex: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            transition={{ duration: 0.75, ease: 'easeInOut' }}
+          />
+        )}
       </AnimatePresence>
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 2, background: 'linear-gradient(to right, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.55) 45%, rgba(0,0,0,0.06) 100%)' }} />
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 2, background: 'linear-gradient(to top, #080808 0%, rgba(8,8,8,0.55) 28%, transparent 60%)' }} />
@@ -283,14 +368,16 @@ function HeroSection({ muted, setMuted }: { muted: boolean; setMuted: (v: boolea
               <span className="text-white/55 text-sm">{slide.duration}</span>
               {slide.genres.slice(0, 2).map(g => <span key={g} className="text-white/40 text-sm">· {g}</span>)}
             </div>
-            <p className="text-white/65 text-sm md:text-base leading-relaxed mb-8 max-w-md">{slide.synopsis}</p>
+            <p className="text-white/65 text-sm md:text-base leading-relaxed mb-8 max-w-md line-clamp-3">{slide.synopsis}</p>
             <div className="flex items-center gap-3 flex-wrap">
               <motion.button whileTap={{ scale: 0.95 }}
+                onClick={() => open(slide)}
                 className="flex items-center gap-2.5 px-8 py-3.5 rounded-lg font-black text-sm text-black cursor-pointer"
                 style={{ background: '#ffffff', boxShadow: '0 4px 20px rgba(255,255,255,0.25)' }}>
                 <Play className="w-5 h-5 fill-black" />Play
               </motion.button>
               <motion.button whileTap={{ scale: 0.95 }}
+                onClick={() => open(slide)}
                 className="flex items-center gap-2.5 px-6 py-3.5 rounded-lg font-bold text-sm text-white cursor-pointer"
                 style={{ background: 'rgba(255,255,255,0.14)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.2)' }}>
                 <Info className="w-5 h-5" />More Info
@@ -300,26 +387,28 @@ function HeroSection({ muted, setMuted }: { muted: boolean; setMuted: (v: boolea
         </AnimatePresence>
       </div>
       <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex items-center gap-2" style={{ zIndex: 10 }}>
-        {HERO_SLIDES.map((s, i) => (
+        {slides.map((s, i) => (
           <button key={s.id} onClick={() => goto(i)} className="rounded-full transition-all duration-300 cursor-pointer"
-            style={{ width: idx === i ? 32 : 8, height: 8, background: idx === i ? '#ffffff' : 'rgba(255,255,255,0.32)' }} />
+            style={{ width: safeIdx === i ? 32 : 8, height: 8, background: safeIdx === i ? '#ffffff' : 'rgba(255,255,255,0.32)' }} />
         ))}
       </div>
-      <button onClick={() => goto((idx - 1 + HERO_SLIDES.length) % HERO_SLIDES.length)}
+      <button onClick={() => goto((safeIdx - 1 + slides.length) % slides.length)}
         className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer"
         style={{ zIndex: 10, background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.18)' }}>
         <ChevronLeft className="w-5 h-5 text-white" />
       </button>
-      <button onClick={() => goto((idx + 1) % HERO_SLIDES.length)}
+      <button onClick={() => goto((safeIdx + 1) % slides.length)}
         className="absolute right-16 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer"
         style={{ zIndex: 10, background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.18)' }}>
         <ChevronRight className="w-5 h-5 text-white" />
       </button>
-      <button onClick={() => setMuted(!muted)}
-        className="absolute bottom-16 right-6 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer"
-        style={{ zIndex: 10, background: 'rgba(0,0,0,0.55)', border: '1.5px solid rgba(255,255,255,0.28)', backdropFilter: 'blur(8px)' }}>
-        {muted ? <VolumeX className="w-4 h-4 text-white" /> : <Volume2 className="w-4 h-4 text-white" />}
-      </button>
+      {slide.video && (
+        <button onClick={() => setMuted(!muted)}
+          className="absolute bottom-16 right-6 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer"
+          style={{ zIndex: 10, background: 'rgba(0,0,0,0.55)', border: '1.5px solid rgba(255,255,255,0.28)', backdropFilter: 'blur(8px)' }}>
+          {muted ? <VolumeX className="w-4 h-4 text-white" /> : <Volume2 className="w-4 h-4 text-white" />}
+        </button>
+      )}
       <div className="absolute top-1/2 -translate-y-1/2 right-8 md:right-16 flex flex-col items-center gap-0.5 border-l-4 border-white/50 pl-2.5" style={{ zIndex: 10 }}>
         <span className="text-white font-black text-2xl">{slide.rating}</span>
         <span className="text-white/45 text-[10px] font-semibold uppercase tracking-wider">Rating</span>
@@ -332,27 +421,37 @@ function HeroSection({ muted, setMuted }: { muted: boolean; setMuted: (v: boolea
 function ShowCard({ show, watchlist, onToggle, badge }: {
   show: Show; watchlist: Set<string>; onToggle: (id: string) => void; badge?: BadgeType;
 }) {
+  const open = useOpenPlayer();
   const [hovered, setHovered] = useState(false);
   const inList = watchlist.has(show.id);
   const badgeCfg = badge ? BADGES[badge] : null;
+  const inProgress = !!show.jobStatus && show.jobStatus !== 'complete' && show.jobStatus !== 'failed';
 
   return (
     <motion.div
       className="relative flex-shrink-0 cursor-pointer rounded-md overflow-hidden"
       style={{ width: CARD_W, height: CARD_H }}
+      onClick={() => open(show)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       whileHover={{ scale: 1.05, zIndex: 20 }}
       transition={{ duration: 0.2 }}
     >
       <img src={show.thumb} alt={show.title} className="w-full h-full object-cover" style={{ objectPosition: 'center top' }} />
-
-      {/* Persistent bottom gradient */}
       <div className="absolute inset-0 pointer-events-none"
         style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.06) 48%, transparent 100%)' }} />
 
-      {/* Badge — top-left, always visible */}
-      {badgeCfg && !hovered && (
+      {inProgress && !hovered && (
+        <div className="absolute top-2 left-2 z-10">
+          <span className="inline-flex items-center gap-1 text-[9px] font-black tracking-widest text-white px-[6px] py-[3px] rounded-[3px]"
+            style={{ background: '#F59E0B' }}>
+            <Loader2 className="w-2.5 h-2.5 animate-spin" />
+            CREATING
+          </span>
+        </div>
+      )}
+
+      {badgeCfg && !hovered && !inProgress && (
         <div className="absolute top-2 left-2 z-10">
           <span className="text-[9px] font-black tracking-widest text-white px-[6px] py-[3px] rounded-[3px]"
             style={{ background: badgeCfg.bg, letterSpacing: '0.07em' }}>
@@ -361,7 +460,6 @@ function ShowCard({ show, watchlist, onToggle, badge }: {
         </div>
       )}
 
-      {/* Default label at bottom */}
       {!hovered && (
         <div className="absolute bottom-0 left-0 right-0 px-3 pb-2.5">
           <p className="text-white font-semibold text-xs leading-tight truncate">{show.title}</p>
@@ -369,7 +467,6 @@ function ShowCard({ show, watchlist, onToggle, badge }: {
         </div>
       )}
 
-      {/* Hover overlay */}
       <AnimatePresence>
         {hovered && (
           <motion.div
@@ -392,7 +489,7 @@ function ShowCard({ show, watchlist, onToggle, badge }: {
                 ))}
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={e => e.stopPropagation()}
+                <button onClick={(e) => { e.stopPropagation(); open(show); }}
                   className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#fff' }}>
                   <Play className="w-4 h-4 fill-black" style={{ marginLeft: 1 }} />
                 </button>
@@ -416,12 +513,14 @@ function ShowCard({ show, watchlist, onToggle, badge }: {
 
 // ─── Continue Watching Card — red scrubber bar ────────────────────────────────
 function ContinueWatchingCard({ show }: { show: ProgressShow }) {
+  const open = useOpenPlayer();
   const [hovered, setHovered] = useState(false);
 
   return (
     <motion.div
       className="relative flex-shrink-0 cursor-pointer rounded-md overflow-hidden"
       style={{ width: CARD_W, height: CARD_H }}
+      onClick={() => open(show)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       whileHover={{ scale: 1.05, zIndex: 20 }}
@@ -430,8 +529,6 @@ function ContinueWatchingCard({ show }: { show: ProgressShow }) {
       <img src={show.thumb} alt={show.title} className="w-full h-full object-cover" style={{ objectPosition: 'center top' }} />
       <div className="absolute inset-0 pointer-events-none"
         style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.08) 52%, transparent 100%)' }} />
-
-      {/* Scrubber — always visible */}
       <div className="absolute bottom-0 left-0 right-0 h-[3px]" style={{ background: 'rgba(255,255,255,0.15)' }}>
         <div className="h-full" style={{ width: `${show.watchedPercent}%`, background: '#E50914' }} />
       </div>
@@ -458,7 +555,7 @@ function ContinueWatchingCard({ show }: { show: ProgressShow }) {
             <div>
               <p className="text-white font-bold text-xs mb-2 leading-snug">{show.title}</p>
               <div className="flex items-center gap-2">
-                <button onClick={e => e.stopPropagation()}
+                <button onClick={(e) => { e.stopPropagation(); open(show); }}
                   className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-md text-xs font-bold text-black flex-shrink-0"
                   style={{ background: '#fff' }}>
                   <Play className="w-3 h-3 fill-black" style={{ marginLeft: 1 }} />Resume
@@ -475,6 +572,7 @@ function ContinueWatchingCard({ show }: { show: ProgressShow }) {
 
 // ─── Portrait Card ────────────────────────────────────────────────────────────
 function PortraitCard({ show, watchlist, onToggle }: { show: Show; watchlist: Set<string>; onToggle: (id: string) => void }) {
+  const open = useOpenPlayer();
   const [hovered, setHovered] = useState(false);
   const inList = watchlist.has(show.id);
 
@@ -482,6 +580,7 @@ function PortraitCard({ show, watchlist, onToggle }: { show: Show; watchlist: Se
     <motion.div
       className="relative flex-shrink-0 cursor-pointer rounded-xl overflow-hidden"
       style={{ width: PORT_W, height: PORT_H }}
+      onClick={() => open(show)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       whileHover={{ scale: 1.05, zIndex: 20 }}
@@ -499,7 +598,7 @@ function PortraitCard({ show, watchlist, onToggle }: { show: Show; watchlist: Se
             <div>
               <p className="text-white font-bold text-xs mb-2 leading-tight">{show.title}</p>
               <div className="flex gap-1.5">
-                <button onClick={e => e.stopPropagation()} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: '#fff' }}>
+                <button onClick={(e) => { e.stopPropagation(); open(show); }} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: '#fff' }}>
                   <Play className="w-3.5 h-3.5 fill-black" style={{ marginLeft: 1 }} />
                 </button>
                 <button onClick={e => { e.stopPropagation(); onToggle(show.id); }}
@@ -543,34 +642,41 @@ function useScrollRow() {
   return { trackRef, canLeft, canRight, scroll, check };
 }
 
-// ─── In Progress Section ──────────────────────────────────────────────────────
-function InProgressSection() {
+// ─── Demo "creating" in-progress indicator (landing / no real jobs) ───────────
+const DEMO_IN_PROGRESS = {
+  title: "The Dragon's Garden",
+  childName: 'Emma',
+  theme: 'Fantasy · Adventure',
+  thumb: '/images/banners/banner4.jpeg',
+  startedAt: '2 hours ago',
+  progress: 67,
+  steps: [
+    { label: 'Story crafted', done: true },
+    { label: 'Voice generated', done: true },
+    { label: 'Rendering animation', done: false },
+  ],
+};
+
+function DemoInProgressSection() {
+  const s = DEMO_IN_PROGRESS;
   return (
     <div className="px-8 md:px-16 mb-10">
       <div className="flex items-center gap-3 mb-4">
-        <motion.div
-          className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-          style={{ background: '#F59E0B' }}
-          animate={{ opacity: [1, 0.2, 1] }}
-          transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
-        />
+        <motion.div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: '#F59E0B' }}
+          animate={{ opacity: [1, 0.2, 1] }} transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }} />
         <h2 className="text-white font-bold text-lg">In Progress</h2>
         <span className="text-white/35 text-sm">· AI is crafting your story</span>
       </div>
-
       <div className="relative rounded-xl overflow-hidden" style={{ maxWidth: 480, height: 188 }}>
-        <img src={IN_PROGRESS_STORY.thumb} alt="" className="absolute inset-0 w-full h-full object-cover"
+        <img src={s.thumb} alt="" className="absolute inset-0 w-full h-full object-cover"
           style={{ objectPosition: 'center 30%', filter: 'brightness(0.28) saturate(0.55)' }} />
         <motion.div className="absolute inset-0 pointer-events-none"
-          animate={{
-            background: [
-              'radial-gradient(ellipse at 15% 50%, rgba(245,158,11,0.09) 0%, transparent 65%)',
-              'radial-gradient(ellipse at 85% 50%, rgba(245,158,11,0.13) 0%, transparent 65%)',
-              'radial-gradient(ellipse at 15% 50%, rgba(245,158,11,0.09) 0%, transparent 65%)',
-            ],
-          }}
-          transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
-        />
+          animate={{ background: [
+            'radial-gradient(ellipse at 15% 50%, rgba(245,158,11,0.09) 0%, transparent 65%)',
+            'radial-gradient(ellipse at 85% 50%, rgba(245,158,11,0.13) 0%, transparent 65%)',
+            'radial-gradient(ellipse at 15% 50%, rgba(245,158,11,0.09) 0%, transparent 65%)',
+          ] }}
+          transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }} />
         <div className="relative z-10 h-full flex flex-col justify-between p-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full"
@@ -578,37 +684,88 @@ function InProgressSection() {
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
               <span className="text-amber-400 text-[11px] font-black uppercase tracking-wider">Creating Your Story</span>
             </div>
-            <span className="text-white/28 text-xs">{IN_PROGRESS_STORY.startedAt}</span>
+            <span className="text-white/28 text-xs">{s.startedAt}</span>
           </div>
           <div>
-            <h3 className="text-white font-black text-xl mb-1 leading-tight">{IN_PROGRESS_STORY.title}</h3>
-            <p className="text-white/45 text-xs mb-3">For {IN_PROGRESS_STORY.childName} · {IN_PROGRESS_STORY.theme}</p>
+            <h3 className="text-white font-black text-xl mb-1 leading-tight">{s.title}</h3>
+            <p className="text-white/45 text-xs mb-3">For {s.childName} · {s.theme}</p>
             <div className="flex items-center gap-5 mb-3">
-              {IN_PROGRESS_STORY.steps.map(step => (
+              {s.steps.map((step) => (
                 <div key={step.label} className="flex items-center gap-1.5">
                   {step.done
                     ? <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
-                    : (
-                      <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.1, repeat: Infinity, ease: 'linear' }} className="flex-shrink-0">
+                    : <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.1, repeat: Infinity, ease: 'linear' }} className="flex-shrink-0">
                         <Loader2 className="w-3.5 h-3.5 text-amber-400" />
-                      </motion.div>
-                    )}
+                      </motion.div>}
                   <span className={`text-[11px] font-medium ${step.done ? 'text-green-400' : 'text-amber-300'}`}>{step.label}</span>
                 </div>
               ))}
             </div>
             <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.11)' }}>
               <motion.div className="h-full rounded-full" style={{ background: 'linear-gradient(90deg,#F59E0B,#EF4444)' }}
-                initial={{ width: '52%' }} animate={{ width: `${IN_PROGRESS_STORY.progress}%` }}
+                initial={{ width: '52%' }} animate={{ width: `${s.progress}%` }}
                 transition={{ duration: 2.8, ease: 'easeOut', delay: 0.4 }} />
             </div>
             <div className="flex justify-between mt-1.5">
               <span className="text-white/30 text-[10px]">Rendering animation...</span>
-              <span className="text-amber-400 text-[10px] font-bold">{IN_PROGRESS_STORY.progress}%</span>
+              <span className="text-amber-400 text-[10px] font-bold">{s.progress}%</span>
             </div>
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Real "creating" in-progress section ──────────────────────────────────────
+function RealInProgressSection({ job }: { job: StoryJob }) {
+  const meta = PROGRESS_META[job.status] ?? { label: 'Working on it', pct: 40 };
+  const thumb = job.thumbnail_url || BANNER_FALLBACKS[0];
+  return (
+    <div className="px-8 md:px-16 mb-10">
+      <div className="flex items-center gap-3 mb-4">
+        <motion.div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: '#F59E0B' }}
+          animate={{ opacity: [1, 0.2, 1] }} transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }} />
+        <h2 className="text-white font-bold text-lg">In Progress</h2>
+        <span className="text-white/35 text-sm">· AI is crafting your story</span>
+      </div>
+      <Link href={`/player/${job.job_id}`}>
+        <div className="relative rounded-xl overflow-hidden cursor-pointer" style={{ maxWidth: 480, height: 188 }}>
+          <img src={thumb} alt="" className="absolute inset-0 w-full h-full object-cover"
+            style={{ objectPosition: 'center 30%', filter: 'brightness(0.28) saturate(0.55)' }} />
+          <motion.div className="absolute inset-0 pointer-events-none"
+            animate={{ background: [
+              'radial-gradient(ellipse at 15% 50%, rgba(245,158,11,0.09) 0%, transparent 65%)',
+              'radial-gradient(ellipse at 85% 50%, rgba(245,158,11,0.13) 0%, transparent 65%)',
+              'radial-gradient(ellipse at 15% 50%, rgba(245,158,11,0.09) 0%, transparent 65%)',
+            ] }}
+            transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }} />
+          <div className="relative z-10 h-full flex flex-col justify-between p-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full"
+                style={{ background: 'rgba(245,158,11,0.14)', border: '1px solid rgba(245,158,11,0.28)' }}>
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span className="text-amber-400 text-[11px] font-black uppercase tracking-wider">Creating Your Story</span>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-white font-black text-xl mb-1 leading-tight">{job.title || 'Your Story'}</h3>
+              <p className="text-white/45 text-xs mb-3">
+                {[job.theme && cap(job.theme), job.tone && cap(job.tone)].filter(Boolean).join(' · ')}
+              </p>
+              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.11)' }}>
+                <motion.div className="h-full rounded-full" style={{ background: 'linear-gradient(90deg,#F59E0B,#EF4444)' }}
+                  initial={{ width: '8%' }} animate={{ width: `${meta.pct}%` }}
+                  transition={{ duration: 2.4, ease: 'easeOut' }} />
+              </div>
+              <div className="flex justify-between mt-1.5">
+                <span className="text-white/30 text-[10px]">{meta.label}…</span>
+                <span className="text-amber-400 text-[10px] font-bold">{meta.pct}%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Link>
     </div>
   );
 }
@@ -618,25 +775,14 @@ function CreateStoryBanner() {
   return (
     <div className="px-8 md:px-16 mb-10">
       <div className="relative rounded-2xl overflow-hidden" style={{ height: 144 }}>
-        {/* Deep gradient background */}
-        <div className="absolute inset-0"
-          style={{ background: 'linear-gradient(120deg, #0d0b2b 0%, #130b35 35%, #0a1f3a 65%, #0b2b1a 100%)' }} />
-
-        {/* Decorative glows */}
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(120deg, #0d0b2b 0%, #130b35 35%, #0a1f3a 65%, #0b2b1a 100%)' }} />
         <div className="absolute -left-10 top-1/2 -translate-y-1/2 w-56 h-56 rounded-full pointer-events-none"
           style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.18) 0%, transparent 70%)' }} />
         <div className="absolute right-32 top-1/2 -translate-y-1/2 w-40 h-40 rounded-full pointer-events-none"
           style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.12) 0%, transparent 70%)' }} />
-
-        {/* Subtle grid texture */}
         <div className="absolute inset-0 pointer-events-none opacity-[0.04]"
           style={{ backgroundImage: 'repeating-linear-gradient(0deg,#fff 0,#fff 1px,transparent 1px,transparent 32px),repeating-linear-gradient(90deg,#fff 0,#fff 1px,transparent 1px,transparent 32px)' }} />
-
-        {/* Border */}
-        <div className="absolute inset-0 rounded-2xl pointer-events-none"
-          style={{ border: '1px solid rgba(139,92,246,0.2)' }} />
-
-        {/* Content */}
+        <div className="absolute inset-0 rounded-2xl pointer-events-none" style={{ border: '1px solid rgba(139,92,246,0.2)' }} />
         <div className="relative z-10 h-full flex items-center justify-between px-8 md:px-10">
           <div>
             <div className="flex items-center gap-2 mb-2">
@@ -646,17 +792,10 @@ function CreateStoryBanner() {
             <h3 className="text-white font-black text-xl leading-tight mb-1">Create Your Own Story</h3>
             <p className="text-white/45 text-sm">Record your voice once — we animate the magic.</p>
           </div>
-
           <Link href="/generate">
-            <motion.div
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.97 }}
+            <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
               className="flex items-center gap-2.5 px-6 py-3 rounded-xl font-black text-sm text-white cursor-pointer flex-shrink-0"
-              style={{
-                background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
-                boxShadow: '0 0 24px rgba(124,58,237,0.45)',
-              }}
-            >
+              style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', boxShadow: '0 0 24px rgba(124,58,237,0.45)' }}>
               <Sparkles className="w-4 h-4" />
               Create Story
             </motion.div>
@@ -668,8 +807,9 @@ function CreateStoryBanner() {
 }
 
 // ─── Continue Watching Row ────────────────────────────────────────────────────
-function ContinueWatchingRow() {
+function ContinueWatchingRow({ items }: { items: ProgressShow[] }) {
   const { trackRef, canLeft, canRight, scroll, check } = useScrollRow();
+  if (items.length === 0) return null;
 
   return (
     <div className="mb-8">
@@ -699,7 +839,7 @@ function ContinueWatchingRow() {
         <div ref={trackRef} onScroll={check}
           className="flex gap-1 overflow-x-auto px-8 md:px-16"
           style={{ scrollbarWidth: 'none', paddingBottom: 6 }}>
-          {CONTINUE_WATCHING.map((show, i) => (
+          {items.map((show, i) => (
             <ContinueWatchingCard key={show.id + i} show={show} />
           ))}
           <div style={{ flexShrink: 0, width: 40 }} />
@@ -722,6 +862,7 @@ function ContentRow({ label, subtitle, shows, portrait = false, badgeType, accen
 }) {
   const { trackRef, canLeft, canRight, scroll, check } = useScrollRow();
   const [hdrHovered, setHdrHovered] = useState(false);
+  if (shows.length === 0) return null;
 
   return (
     <div className="mb-8">
@@ -781,8 +922,11 @@ function ContentRow({ label, subtitle, shows, portrait = false, badgeType, accen
 }
 
 // ─── Top 10 Row ───────────────────────────────────────────────────────────────
-function Top10Row({ watchlist, onToggle }: { watchlist: Set<string>; onToggle: (id: string) => void }) {
+function Top10Row({ shows }: { shows: Show[] }) {
+  const open = useOpenPlayer();
   const { trackRef, canLeft, canRight, scroll, check } = useScrollRow();
+  const top = shows.slice(0, 8);
+  if (top.length === 0) return null;
 
   return (
     <div className="mb-8">
@@ -815,10 +959,10 @@ function Top10Row({ watchlist, onToggle }: { watchlist: Set<string>; onToggle: (
         <div ref={trackRef} onScroll={check}
           className="flex overflow-x-auto px-8 md:px-16"
           style={{ scrollbarWidth: 'none' }}>
-          {SHOWS.slice(0, 8).map((show, rank) => (
+          {top.map((show, rank) => (
             <motion.div key={show.id} className="relative flex-shrink-0 cursor-pointer group" style={{ width: 200 }}
+              onClick={() => open(show)}
               whileHover={{ scale: 1.04, zIndex: 20 }} transition={{ duration: 0.2 }}>
-              {/* Ghost rank number */}
               <div className="absolute left-0 bottom-0 z-10 font-black select-none leading-none pointer-events-none"
                 style={{ fontSize: 130, lineHeight: 1, color: 'transparent', WebkitTextStroke: '2px rgba(255,255,255,0.12)', letterSpacing: '-0.04em' }}>
                 {rank + 1}
@@ -850,8 +994,8 @@ function Top10Row({ watchlist, onToggle }: { watchlist: Set<string>; onToggle: (
 }
 
 // ─── Billboard ────────────────────────────────────────────────────────────────
-function Billboard() {
-  const show = SHOWS[0];
+function Billboard({ show }: { show: Show }) {
+  const open = useOpenPlayer();
   return (
     <div className="relative mx-8 md:mx-16 mb-10 rounded-2xl overflow-hidden" style={{ height: 300 }}>
       <img src={show.hero} alt={show.title} className="w-full h-full object-cover" style={{ objectPosition: 'center 30%' }} />
@@ -860,13 +1004,15 @@ function Billboard() {
       <div className="absolute inset-0 flex flex-col justify-center px-10">
         <span className="text-[10px] font-black uppercase tracking-widest text-red-500 mb-3">Hushtales Original</span>
         <h3 className="text-white font-black mb-2" style={{ fontSize: 'clamp(22px,3vw,38px)' }}>{show.title}</h3>
-        <p className="text-white/58 text-sm mb-6 max-w-sm leading-relaxed">{show.synopsis}</p>
+        <p className="text-white/58 text-sm mb-6 max-w-sm leading-relaxed line-clamp-3">{show.synopsis}</p>
         <div className="flex gap-3">
           <motion.button whileTap={{ scale: 0.96 }}
+            onClick={() => open(show)}
             className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold text-sm text-black cursor-pointer" style={{ background: '#fff' }}>
             <Play className="w-4 h-4 fill-black" /> Play Now
           </motion.button>
           <motion.button whileTap={{ scale: 0.96 }}
+            onClick={() => open(show)}
             className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-sm text-white cursor-pointer"
             style={{ background: 'rgba(255,255,255,0.13)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.2)' }}>
             <Plus className="w-4 h-4" /> My List
@@ -883,8 +1029,8 @@ function Billboard() {
 }
 
 // ─── My List Row ──────────────────────────────────────────────────────────────
-function MyListRow({ watchlist, onToggle }: { watchlist: Set<string>; onToggle: (id: string) => void }) {
-  const items = SHOWS.filter(s => watchlist.has(s.id));
+function MyListRow({ shows, watchlist, onToggle }: { shows: Show[]; watchlist: Set<string>; onToggle: (id: string) => void }) {
+  const items = shows.filter(s => watchlist.has(s.id));
   if (items.length === 0) return null;
   return (
     <div className="mb-8">
@@ -900,9 +1046,10 @@ function MyListRow({ watchlist, onToggle }: { watchlist: Set<string>; onToggle: 
 }
 
 // ─── Search Overlay ───────────────────────────────────────────────────────────
-function SearchOverlay({ onClose }: { onClose: () => void }) {
+function SearchOverlay({ shows, onClose }: { shows: Show[]; onClose: () => void }) {
+  const open = useOpenPlayer();
   const [q, setQ] = useState('');
-  const results = q.length > 1 ? SHOWS.filter(s => s.title.toLowerCase().includes(q.toLowerCase())) : [];
+  const results = q.length > 1 ? shows.filter(s => s.title.toLowerCase().includes(q.toLowerCase())) : [];
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -927,7 +1074,8 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
         {results.length > 0 && (
           <div className="grid grid-cols-2 gap-3">
             {results.map(show => (
-              <div key={show.id} className="flex items-center gap-3 rounded-xl p-3 cursor-pointer hover:bg-white/10 transition-colors"
+              <div key={show.id} onClick={() => { open(show); onClose(); }}
+                className="flex items-center gap-3 rounded-xl p-3 cursor-pointer hover:bg-white/10 transition-colors"
                 style={{ background: 'rgba(255,255,255,0.05)' }}>
                 <img src={show.thumb} alt={show.title} className="w-16 h-10 object-cover rounded-lg" />
                 <div>
@@ -948,30 +1096,101 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function Home3Page() {
+  const router = useRouter();
   const [muted, setMuted]           = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [playing, setPlaying]       = useState<Show | null>(null);
   const { list: watchlist, toggle: toggleWatchlist } = useWatchlist();
 
+  const { user } = useAuth();
+  const { data: jobs, error } = useJobs();
+
+  // Click a story: play inline if it has a video, otherwise show its status page.
+  const openShow = (show: Show) => {
+    if (show.video) setPlaying(show);
+    else router.push(`/player/${show.id}`);
+  };
+
+  // Real stories → Show shape, newest first.
+  const realShows = (jobs ?? []).map(jobToShow);
+  const hasReal = realShows.length > 0;
+  const demoMode = !hasReal;
+  const notSignedIn = isUnauthorized(error) || (!user && !jobs);
+
+  // The catalogue everything renders from.
+  const pool = hasReal ? realShows : DEMO_SHOWS;
+
+  // Hero: use real stories only once they have a playable video; otherwise keep
+  // the original demo video hero so the page looks the same as before.
+  const playableReal = realShows.filter((s) => s.video);
+  const heroSlides =
+    playableReal.length > 0
+      ? playableReal.slice(0, 4)
+      : [DEMO_SHOWS[0], DEMO_SHOWS[1], DEMO_SHOWS[2], DEMO_SHOWS[4]];
+
+  // Fill the original themed rows with real stories (cycled) when available,
+  // so the rich layout is preserved but the cards reflect the user's library.
+  const rowShows = (ids: string[], rowIdx: number): Show[] =>
+    hasReal
+      ? ids.map((_, i) => pool[(rowIdx * 3 + i) % pool.length])
+      : ids.map((id) => DEMO_SHOWS.find((s) => s.id === id) ?? DEMO_SHOWS[0]);
+
+  // Continue watching: completed real stories (demo list when in demo mode).
+  const continueItems: ProgressShow[] = hasReal
+    ? realShows
+        .filter((s) => s.jobStatus === 'complete')
+        .slice(0, 6)
+        .map((s, i) => ({ ...s, watchedPercent: [25, 55, 80, 40, 65, 15][i % 6], minutesLeft: 0 }))
+    : DEMO_CONTINUE;
+
+  // First in-progress real job, if any.
+  const inProgressJob = (jobs ?? []).find(
+    (j) => j.status !== 'complete' && j.status !== 'failed'
+  );
+
   return (
+    <OpenPlayerCtx.Provider value={openShow}>
     <div className="min-h-screen -mt-16" style={{ background: '#080808', fontFamily: 'var(--font-nunito), sans-serif' }}>
       <button onClick={() => setSearchOpen(true)}
         className="fixed top-4 right-16 z-40 text-white/60 hover:text-white transition-colors cursor-pointer hidden md:block">
         <Search className="w-5 h-5" />
       </button>
 
-      <HeroSection muted={muted} setMuted={setMuted} />
+      <HeroSection slides={heroSlides} muted={muted} setMuted={setMuted} />
 
       <div className="relative z-10" style={{ marginTop: -80 }}>
-        <ContinueWatchingRow />
-        <InProgressSection />
+        {/* Sign-in nudge while browsing demo content unauthenticated */}
+        {notSignedIn && (
+          <div className="px-8 md:px-16 mb-8">
+            <div className="flex items-center justify-between gap-4 rounded-xl px-5 py-3.5"
+              style={{ background: 'rgba(124,58,237,0.10)', border: '1px solid rgba(124,58,237,0.22)' }}>
+              <p className="text-white/65 text-sm">
+                You’re browsing sample stories. Sign in to see and create your own.
+              </p>
+              <Link href="/auth/login?redirect=/home3"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-black text-white flex-shrink-0"
+                style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}>
+                <LogIn className="w-3.5 h-3.5" />
+                Sign In
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {inProgressJob
+          ? <RealInProgressSection job={inProgressJob} />
+          : demoMode && <DemoInProgressSection />}
+
+        <ContinueWatchingRow items={continueItems} />
+
         <CreateStoryBanner />
 
-        {ROWS.map(row => (
+        {DEMO_ROWS.map((row, idx) => (
           <ContentRow
             key={row.label}
             label={row.label}
             subtitle={row.subtitle}
-            shows={row.ids.map(byId)}
+            shows={rowShows(row.ids, idx)}
             badgeType={row.badgeType}
             accentColor={row.accentColor}
             watchlist={watchlist}
@@ -979,19 +1198,19 @@ export default function Home3Page() {
           />
         ))}
 
-        <Top10Row watchlist={watchlist} onToggle={toggleWatchlist} />
-        <Billboard />
+        <Top10Row shows={pool} />
+        <Billboard show={pool[0]} />
 
         <ContentRow
           label="Personalised For You"
           subtitle="Handpicked for your family"
-          shows={SHOWS.slice().reverse()}
+          shows={pool.slice().reverse()}
           portrait
           watchlist={watchlist}
           onToggle={toggleWatchlist}
         />
 
-        <MyListRow watchlist={watchlist} onToggle={toggleWatchlist} />
+        <MyListRow shows={pool} watchlist={watchlist} onToggle={toggleWatchlist} />
 
         <footer className="px-8 md:px-16 py-12 border-t border-white/[0.05]">
           <div className="flex items-center gap-1 mb-6">
@@ -1017,8 +1236,13 @@ export default function Home3Page() {
       </div>
 
       <AnimatePresence>
-        {searchOpen && <SearchOverlay onClose={() => setSearchOpen(false)} />}
+        {searchOpen && <SearchOverlay shows={pool} onClose={() => setSearchOpen(false)} />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {playing && <VideoModal show={playing} onClose={() => setPlaying(null)} />}
       </AnimatePresence>
     </div>
+    </OpenPlayerCtx.Provider>
   );
 }

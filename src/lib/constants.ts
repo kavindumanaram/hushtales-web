@@ -1,13 +1,25 @@
-// Lambda Function URLs — ap-southeast-2, stack: hushtales-dev
-// All values come from NEXT_PUBLIC_ env vars so they are safe to use client-side.
+// HushTales API + Cognito configuration.
+// All values come from NEXT_PUBLIC_ env vars so they are safe client-side.
+// Region: ap-southeast-2 | Stack: hushtales-dev
 
-export const STORY_GENERATOR_URL = process.env.NEXT_PUBLIC_STORY_GENERATOR_URL ?? '';
-export const SUBMIT_URL = process.env.NEXT_PUBLIC_SUBMIT_URL ?? '';
-export const GET_JOBS_URL = process.env.NEXT_PUBLIC_GET_JOBS_URL ?? '';
-export const LIST_VOICES_URL = process.env.NEXT_PUBLIC_LIST_VOICES_URL ?? '';
-export const CHECK_VOICE_URL = process.env.NEXT_PUBLIC_CHECK_VOICE_URL ?? '';
-export const GET_UPLOAD_URL = process.env.NEXT_PUBLIC_GET_UPLOAD_URL ?? '';
-export const DELETE_VOICE_URL = process.env.NEXT_PUBLIC_DELETE_VOICE_URL ?? '';
+export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
+export const API_KEY = process.env.NEXT_PUBLIC_API_KEY ?? '';
 
-// Hardcoded until Cognito auth is wired up — swap to JWT claim when auth is ready
-export const ACTIVE_USER_ID = process.env.NEXT_PUBLIC_ACTIVE_USER_ID ?? 'user_test_001';
+export const COGNITO_USER_POOL_ID = process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID ?? '';
+export const COGNITO_CLIENT_ID = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID ?? '';
+export const COGNITO_HOSTED_UI = process.env.NEXT_PUBLIC_COGNITO_HOSTED_UI ?? '';
+
+// Single source of truth for all API paths. Composed with API_BASE at call time.
+export const API_ROUTES = {
+  health: '/health',
+  voices: '/voices',
+  voicesUploadUrl: '/voices/upload-url',
+  voicesCheck: '/voices/check',
+  voicesActive: '/voices/active',
+  storiesGenerate: '/stories/generate',
+  storiesSubmit: '/stories/submit',
+  stories: '/stories',
+  characters: '/characters',
+  usersMe: '/users/me',
+  pushSubscribe: '/push/subscribe',
+} as const;

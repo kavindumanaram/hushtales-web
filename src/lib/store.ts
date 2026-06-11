@@ -1,23 +1,25 @@
 import { create } from 'zustand';
-import { ACTIVE_USER_ID } from './constants';
-import type { StoryJob, VoiceProfile } from './api';
+import type { GenerateStoryResponse, StoryJob } from './api';
 
 interface HushTalesStore {
-  activeUserId: string;
-  activeVoiceProfile: VoiceProfile | null;
+  // Currently selected voice for story generation (mirrors backend active_voice_id).
+  activeVoiceId: string | null;
+  // The job a user is currently viewing/creating.
   currentJob: StoryJob | null;
+  // Holds the generated script between the generate → submit steps.
+  generateResult: GenerateStoryResponse | null;
 
-  setActiveUserId: (id: string) => void;
-  setActiveVoiceProfile: (profile: VoiceProfile | null) => void;
+  setActiveVoiceId: (id: string | null) => void;
   setCurrentJob: (job: StoryJob | null) => void;
+  setGenerateResult: (result: GenerateStoryResponse | null) => void;
 }
 
 export const useStore = create<HushTalesStore>((set) => ({
-  activeUserId: ACTIVE_USER_ID,
-  activeVoiceProfile: null,
+  activeVoiceId: null,
   currentJob: null,
+  generateResult: null,
 
-  setActiveUserId: (id) => set({ activeUserId: id }),
-  setActiveVoiceProfile: (profile) => set({ activeVoiceProfile: profile }),
+  setActiveVoiceId: (id) => set({ activeVoiceId: id }),
   setCurrentJob: (job) => set({ currentJob: job }),
+  setGenerateResult: (result) => set({ generateResult: result }),
 }));
