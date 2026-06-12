@@ -50,98 +50,17 @@ const BADGES: Record<NonNullable<BadgeType>, { label: string; bg: string }> = {
 };
 
 // ─── Card dimensions ──────────────────────────────────────────────────────────
-const CARD_W = 268;
-const CARD_H = 151; // 16:9
-const PORT_W = 162;
-const PORT_H = 243; // 2:3
+const CARD_W = 372;
+const CARD_H = 209; // 16:9
+const PORT_W = 224;
+const PORT_H = 336; // 2:3
 
-// ─── Demo show data (fallback when the user has no real stories yet) ──────────
-const DEMO_SHOWS: Show[] = [
-  {
-    id: 'moonlit',
-    title: 'The Moonlight Explorer',
-    year: '2026', rating: '9.4', match: '98%', duration: '28 min',
-    genres: ['Adventure', 'Family', 'Fantasy'],
-    thumb: '/images/banners/banner6.jpeg',
-    hero:  '/images/banners/banner6.jpeg',
-    video: '/videos/story1.mp4',
-    synopsis: 'An adventurous elephant and his forest companions embark on a breathtaking moonlit journey through an enchanted wilderness — crafted in your own voice.',
-    badge: 'HUSHTALES ORIGINAL',
-  },
-  {
-    id: 'aetheria',
-    title: "Aetheria's Skies",
-    year: '2026', rating: '9.2', match: '96%', duration: '30 min',
-    genres: ['Fantasy', 'Action', 'Family'],
-    thumb: '/images/posters/poster6.jpeg',
-    hero:  '/images/banners/banner5.jpeg',
-    video: '/videos/story2.mp4',
-    synopsis: 'A fearless girl and her dragon soar above floating castles and glittering skies in this visually stunning epic.',
-    badge: '#1 IN AU TODAY',
-  },
-  {
-    id: 'daisy',
-    title: "Daisy's Forest Friends",
-    year: '2025', rating: '9.0', match: '94%', duration: '22 min',
-    genres: ['Nature', 'Family', 'Heartwarming'],
-    thumb: '/images/banners/banner2.jpeg',
-    hero:  '/images/banners/banner3.jpeg',
-    video: '/videos/story3.mp4',
-    synopsis: 'Little Daisy the fawn discovers the magic of friendship when she meets the gentle creatures of the Australian bush.',
-    badge: 'SEASON 1 COMPLETE',
-  },
-  {
-    id: 'luna',
-    title: 'The Luna Kingdom',
-    year: '2025', rating: '8.9', match: '92%', duration: '26 min',
-    genres: ['Fantasy', 'Royal', 'Adventure'],
-    thumb: '/images/posters/poster3.jpeg',
-    hero:  '/images/banners/banner4.jpeg',
-    video: '/videos/story4.mp4',
-    synopsis: 'A brave rabbit princess must reclaim her moonlit kingdom from shadows using nothing but courage and kindness.',
-  },
-  {
-    id: 'seas',
-    title: 'The Magical Seas',
-    year: '2026', rating: '8.8', match: '91%', duration: '28 min',
-    genres: ['Adventure', 'Pirates', 'Fantasy'],
-    thumb: '/images/posters/poster4.jpeg',
-    hero:  '/images/banners/banner1.jpeg',
-    video: '/videos/story5.mp4',
-    synopsis: 'Captain Mia and her crew — a raccoon, a bear and a talking ship — sail a rainbow ocean full of wonder and danger.',
-    badge: 'NEW EPISODE',
-  },
-  {
-    id: 'barnaby',
-    title: "Barnaby's Glowing Adventure",
-    year: '2025', rating: '9.1', match: '95%', duration: '24 min',
-    genres: ['Fantasy', 'Cozy', 'Family'],
-    thumb: '/images/posters/poster1.jpeg',
-    hero:  '/images/banners/banner2.jpeg',
-    video: '/videos/story6.mp4',
-    synopsis: 'A small bunny with a glowing lantern lights up the darkest forest in this cozy, dream-like bedtime classic.',
-    badge: 'HUSHTALES ORIGINAL',
-  },
-  {
-    id: 'captain',
-    title: "Captain Luna's Voyage",
-    year: '2026', rating: '8.7', match: '90%', duration: '25 min',
-    genres: ['Nautical', 'Adventure', 'Family'],
-    thumb: '/images/posters/poster5.jpeg',
-    hero:  '/images/banners/banner2.jpeg',
-    synopsis: 'Young captain Luna charts a course across impossible seas, discovering that the bravest sailors follow their hearts.',
-  },
-  {
-    id: 'kangaroo',
-    title: 'Little Joey Meets the World',
-    year: '2025', rating: '8.6', match: '89%', duration: '18 min',
-    genres: ['Nature', 'Aussie', 'Heartwarming'],
-    thumb: '/images/banners/banner3.jpeg',
-    hero:  '/images/banners/banner3.jpeg',
-    synopsis: 'A curious joey takes his first hops outside the pouch and befriends every creature in the sunlit bush.',
-  },
-];
 
+const cap = (s: string) => s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+// ─── Default artwork ──────────────────────────────────────────────────────────
+// Stories without a real thumbnail fall back to these stock images. A story
+// keeps the same image across renders (deterministic pick by its id).
 const POSTER_FALLBACKS = [
   '/images/posters/poster1.jpeg', '/images/posters/poster2.jpeg',
   '/images/posters/poster3.jpeg', '/images/posters/poster4.jpeg',
@@ -153,7 +72,11 @@ const BANNER_FALLBACKS = [
   '/images/banners/banner5.jpeg', '/images/banners/banner6.jpeg',
 ];
 
-const cap = (s: string) => s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+function hashIndex(seed: string, n: number): number {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
+  return Math.abs(h) % n;
+}
 
 // ─── Player context ───────────────────────────────────────────────────────────
 // open(show): plays the video inline if the story has one (demo or real
@@ -223,14 +146,17 @@ function VideoModal({ show, onClose }: { show: Show; onClose: () => void }) {
 }
 
 // Map a real backend job → the Show shape this UI renders.
-function jobToShow(job: StoryJob, i: number): Show {
-  const poster = job.thumbnail_url || POSTER_FALLBACKS[i % POSTER_FALLBACKS.length];
-  const banner = job.thumbnail_url || BANNER_FALLBACKS[i % BANNER_FALLBACKS.length];
+function jobToShow(job: StoryJob): Show {
+  const title = job.title || 'Untitled Story';
+  const seed = job.job_id || title;
+  const poster = job.thumbnail_url || POSTER_FALLBACKS[hashIndex(seed, POSTER_FALLBACKS.length)];
+  const banner = job.thumbnail_url || BANNER_FALLBACKS[hashIndex(seed, BANNER_FALLBACKS.length)];
   const genres = [job.theme, job.tone].filter(Boolean).map((g) => cap(g!));
+  const created = new Date(job.created_at);
   return {
     id: job.job_id,
-    title: job.title || 'Untitled Story',
-    year: new Date(job.created_at).getFullYear().toString(),
+    title,
+    year: Number.isNaN(created.getTime()) ? '2026' : created.getFullYear().toString(),
     rating: '9.0',
     match: '97%',
     duration: job.length === 'full' ? '~60 sec' : '~30 sec',
@@ -243,31 +169,16 @@ function jobToShow(job: StoryJob, i: number): Show {
   };
 }
 
-type RowDef = {
-  label: string;
-  subtitle?: string;
-  ids: string[];
-  badgeType?: BadgeType;
-  accentColor?: string;
-};
-
-const DEMO_ROWS: RowDef[] = [
-  { label: 'New Releases', subtitle: 'Fresh stories added this week', ids: ['moonlit', 'seas', 'captain', 'aetheria'], badgeType: 'new', accentColor: '#E50914' },
-  { label: 'Trending Now', subtitle: 'What families are watching right now', ids: ['aetheria', 'moonlit', 'seas', 'barnaby', 'luna'], badgeType: 'trending', accentColor: '#C2410C' },
-  { label: 'Top Picks for You', subtitle: 'Personalised based on your favourites', ids: ['barnaby', 'luna', 'daisy', 'moonlit'], badgeType: 'for-you', accentColor: '#1565C0' },
-  { label: 'Fantasy & Adventure', ids: ['aetheria', 'luna', 'seas', 'barnaby', 'captain', 'moonlit'] },
-  { label: 'Cozy Bedtime Stories', ids: ['barnaby', 'daisy', 'kangaroo', 'luna'] },
-  { label: 'HushTales Originals', subtitle: 'Exclusive stories, only on HushTales', ids: ['moonlit', 'barnaby', 'aetheria'], badgeType: 'original', accentColor: '#6D28D9' },
-];
-
 type ProgressShow = Show & { watchedPercent: number; minutesLeft: number };
 
-const DEMO_CONTINUE: ProgressShow[] = [
-  { ...DEMO_SHOWS[5], watchedPercent: 65, minutesLeft: 8  },
-  { ...DEMO_SHOWS[2], watchedPercent: 32, minutesLeft: 15 },
-  { ...DEMO_SHOWS[6], watchedPercent: 80, minutesLeft: 5  },
-  { ...DEMO_SHOWS[0], watchedPercent: 15, minutesLeft: 24 },
-];
+// A rail of cards, built from the user's real library at render time.
+type Row = {
+  label: string;
+  subtitle?: string;
+  badgeType?: BadgeType;
+  accentColor?: string;
+  shows: Show[];
+};
 
 // In-progress status → label/progress for the real "creating" card.
 const PROGRESS_META: Record<string, { label: string; pct: number }> = {
@@ -382,6 +293,13 @@ function HeroSection({
                 style={{ background: 'rgba(255,255,255,0.14)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.2)' }}>
                 <Info className="w-5 h-5" />More Info
               </motion.button>
+              <Link href="/generate">
+                <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.95 }}
+                  className="flex items-center gap-2.5 px-6 py-3.5 rounded-lg font-black text-sm text-white cursor-pointer"
+                  style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', boxShadow: '0 0 24px rgba(124,58,237,0.45)' }}>
+                  <Sparkles className="w-5 h-5" />Create Story
+                </motion.div>
+              </Link>
             </div>
           </motion.div>
         </AnimatePresence>
@@ -461,9 +379,9 @@ function ShowCard({ show, watchlist, onToggle, badge }: {
       )}
 
       {!hovered && (
-        <div className="absolute bottom-0 left-0 right-0 px-3 pb-2.5">
-          <p className="text-white font-semibold text-xs leading-tight truncate">{show.title}</p>
-          <p className="text-white/40 text-[10px] mt-0.5">{show.duration} · {show.genres[0]}</p>
+        <div className="absolute bottom-0 left-0 right-0 px-3.5 pb-3">
+          <p className="text-white font-semibold text-sm leading-tight truncate">{show.title}</p>
+          <p className="text-white/45 text-[11px] mt-0.5">{show.duration} · {show.genres[0]}</p>
         </div>
       )}
 
@@ -635,138 +553,135 @@ function useScrollRow() {
   useEffect(() => { const id = setTimeout(check, 80); return () => clearTimeout(id); }, [check]);
 
   const scroll = (dir: 1 | -1) => {
-    trackRef.current?.scrollBy({ left: dir * 580, behavior: 'smooth' });
+    trackRef.current?.scrollBy({ left: dir * 760, behavior: 'smooth' });
     setTimeout(check, 360);
   };
 
   return { trackRef, canLeft, canRight, scroll, check };
 }
 
-// ─── Demo "creating" in-progress indicator (landing / no real jobs) ───────────
-const DEMO_IN_PROGRESS = {
-  title: "The Dragon's Garden",
-  childName: 'Emma',
-  theme: 'Fantasy · Adventure',
-  thumb: '/images/banners/banner4.jpeg',
-  startedAt: '2 hours ago',
-  progress: 67,
-  steps: [
-    { label: 'Story crafted', done: true },
-    { label: 'Voice generated', done: true },
-    { label: 'Rendering animation', done: false },
-  ],
-};
-
-function DemoInProgressSection() {
-  const s = DEMO_IN_PROGRESS;
+// Section header shared by both in-progress variants.
+function InProgressHeader() {
   return (
-    <div className="px-8 md:px-16 mb-10">
-      <div className="flex items-center gap-3 mb-4">
-        <motion.div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: '#F59E0B' }}
-          animate={{ opacity: [1, 0.2, 1] }} transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }} />
-        <h2 className="text-white font-bold text-lg">In Progress</h2>
-        <span className="text-white/35 text-sm">· AI is crafting your story</span>
-      </div>
-      <div className="relative rounded-xl overflow-hidden" style={{ maxWidth: 480, height: 188 }}>
-        <img src={s.thumb} alt="" className="absolute inset-0 w-full h-full object-cover"
-          style={{ objectPosition: 'center 30%', filter: 'brightness(0.28) saturate(0.55)' }} />
+    <div className="flex items-center gap-3 mb-4">
+      <motion.div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: '#F59E0B' }}
+        animate={{ opacity: [1, 0.2, 1] }} transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }} />
+      <h2 className="text-white font-bold text-lg">In Progress</h2>
+      <span className="text-white/35 text-sm">· AI is crafting your story</span>
+    </div>
+  );
+}
+
+type ProgressStep = { label: string; done: boolean };
+
+// Standard horizontal "processing" card: thumbnail (with shimmer + spinner) on
+// the left, a clear status / stepper / progress-bar block on the right.
+function InProgressCard({
+  thumb, title, subtitle, percent, stage, steps, meta, href,
+}: {
+  thumb: string;
+  title: string;
+  subtitle?: string;
+  percent: number;
+  stage: string;
+  steps?: ProgressStep[];
+  meta?: string;
+  href?: string;
+}) {
+  const card = (
+    <div
+      className="flex flex-col sm:flex-row gap-4 sm:gap-5 rounded-2xl overflow-hidden p-3.5 sm:p-4 transition-colors hover:border-white/15"
+      style={{ background: 'rgba(255,255,255,0.035)', border: '1px solid rgba(255,255,255,0.08)' }}
+    >
+      {/* Thumbnail with processing overlay */}
+      <div className="relative flex-shrink-0 rounded-xl overflow-hidden w-full sm:w-[248px]" style={{ aspectRatio: '16 / 9' }}>
+        <img src={thumb} alt="" className="absolute inset-0 w-full h-full object-cover"
+          style={{ objectPosition: 'center 30%', filter: 'brightness(0.5) saturate(0.7)' }} />
         <motion.div className="absolute inset-0 pointer-events-none"
-          animate={{ background: [
-            'radial-gradient(ellipse at 15% 50%, rgba(245,158,11,0.09) 0%, transparent 65%)',
-            'radial-gradient(ellipse at 85% 50%, rgba(245,158,11,0.13) 0%, transparent 65%)',
-            'radial-gradient(ellipse at 15% 50%, rgba(245,158,11,0.09) 0%, transparent 65%)',
-          ] }}
-          transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }} />
-        <div className="relative z-10 h-full flex flex-col justify-between p-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full"
-              style={{ background: 'rgba(245,158,11,0.14)', border: '1px solid rgba(245,158,11,0.28)' }}>
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-amber-400 text-[11px] font-black uppercase tracking-wider">Creating Your Story</span>
-            </div>
-            <span className="text-white/28 text-xs">{s.startedAt}</span>
+          style={{ background: 'linear-gradient(105deg, transparent 35%, rgba(245,158,11,0.22) 50%, transparent 65%)' }}
+          animate={{ x: ['-130%', '130%'] }}
+          transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }} />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-11 h-11 rounded-full flex items-center justify-center"
+            style={{ background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(245,158,11,0.4)' }}>
+            <Loader2 className="w-5 h-5 text-amber-400 animate-spin" />
           </div>
-          <div>
-            <h3 className="text-white font-black text-xl mb-1 leading-tight">{s.title}</h3>
-            <p className="text-white/45 text-xs mb-3">For {s.childName} · {s.theme}</p>
-            <div className="flex items-center gap-5 mb-3">
-              {s.steps.map((step) => (
-                <div key={step.label} className="flex items-center gap-1.5">
-                  {step.done
-                    ? <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
-                    : <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.1, repeat: Infinity, ease: 'linear' }} className="flex-shrink-0">
-                        <Loader2 className="w-3.5 h-3.5 text-amber-400" />
-                      </motion.div>}
-                  <span className={`text-[11px] font-medium ${step.done ? 'text-green-400' : 'text-amber-300'}`}>{step.label}</span>
-                </div>
-              ))}
-            </div>
-            <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.11)' }}>
-              <motion.div className="h-full rounded-full" style={{ background: 'linear-gradient(90deg,#F59E0B,#EF4444)' }}
-                initial={{ width: '52%' }} animate={{ width: `${s.progress}%` }}
-                transition={{ duration: 2.8, ease: 'easeOut', delay: 0.4 }} />
-            </div>
-            <div className="flex justify-between mt-1.5">
-              <span className="text-white/30 text-[10px]">Rendering animation...</span>
-              <span className="text-amber-400 text-[10px] font-bold">{s.progress}%</span>
-            </div>
+        </div>
+      </div>
+
+      {/* Details */}
+      <div className="flex-1 min-w-0 flex flex-col justify-center">
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+            style={{ background: 'rgba(245,158,11,0.13)', border: '1px solid rgba(245,158,11,0.26)' }}>
+            <Sparkles className="w-3 h-3 text-amber-400" />
+            <span className="text-amber-400 text-[10px] font-black uppercase tracking-wider">Creating Your Story</span>
+          </div>
+          {meta && <span className="text-white/30 text-xs flex-shrink-0">{meta}</span>}
+        </div>
+
+        <h3 className="text-white font-black text-lg sm:text-xl leading-tight truncate">{title}</h3>
+        {subtitle && <p className="text-white/45 text-xs sm:text-sm mt-0.5 truncate">{subtitle}</p>}
+
+        {steps && steps.length > 0 && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-3">
+            {steps.map((step) => (
+              <div key={step.label} className="flex items-center gap-1.5">
+                {step.done
+                  ? <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
+                  : <Loader2 className="w-3.5 h-3.5 text-amber-400 animate-spin flex-shrink-0" />}
+                <span className={`text-[11px] font-medium ${step.done ? 'text-green-400/90' : 'text-amber-300'}`}>{step.label}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-3">
+          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
+            <motion.div className="h-full rounded-full" style={{ background: 'linear-gradient(90deg,#F59E0B,#EF4444)' }}
+              initial={{ width: 0 }} animate={{ width: `${percent}%` }}
+              transition={{ duration: 1.4, ease: 'easeOut' }} />
+          </div>
+          <div className="flex justify-between mt-1.5">
+            <span className="text-white/35 text-[11px]">{stage}…</span>
+            <span className="text-amber-400 text-[11px] font-bold">{percent}%</span>
           </div>
         </div>
       </div>
     </div>
   );
-}
 
+  return (
+    <div className="px-8 md:px-16 mb-10">
+      <InProgressHeader />
+      <div style={{ maxWidth: 680 }}>
+        {href ? <Link href={href} className="block cursor-pointer">{card}</Link> : card}
+      </div>
+    </div>
+  );
+}
 // ─── Real "creating" in-progress section ──────────────────────────────────────
 function RealInProgressSection({ job }: { job: StoryJob }) {
   const meta = PROGRESS_META[job.status] ?? { label: 'Working on it', pct: 40 };
-  const thumb = job.thumbnail_url || BANNER_FALLBACKS[0];
+  const title = job.title || 'Your Story';
+  const thumb = job.thumbnail_url || BANNER_FALLBACKS[hashIndex(job.job_id || title, BANNER_FALLBACKS.length)];
+  const subtitle = [job.theme && cap(job.theme), job.tone && cap(job.tone)].filter(Boolean).join(' · ');
+  // Derive a standard 3-step pipeline view from the job's progress.
+  const steps: ProgressStep[] = [
+    { label: 'Story crafted', done: meta.pct >= 30 },
+    { label: 'Voice & scenes', done: meta.pct >= 50 },
+    { label: 'Final render', done: meta.pct >= 90 },
+  ];
   return (
-    <div className="px-8 md:px-16 mb-10">
-      <div className="flex items-center gap-3 mb-4">
-        <motion.div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: '#F59E0B' }}
-          animate={{ opacity: [1, 0.2, 1] }} transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }} />
-        <h2 className="text-white font-bold text-lg">In Progress</h2>
-        <span className="text-white/35 text-sm">· AI is crafting your story</span>
-      </div>
-      <Link href={`/player/${job.job_id}`}>
-        <div className="relative rounded-xl overflow-hidden cursor-pointer" style={{ maxWidth: 480, height: 188 }}>
-          <img src={thumb} alt="" className="absolute inset-0 w-full h-full object-cover"
-            style={{ objectPosition: 'center 30%', filter: 'brightness(0.28) saturate(0.55)' }} />
-          <motion.div className="absolute inset-0 pointer-events-none"
-            animate={{ background: [
-              'radial-gradient(ellipse at 15% 50%, rgba(245,158,11,0.09) 0%, transparent 65%)',
-              'radial-gradient(ellipse at 85% 50%, rgba(245,158,11,0.13) 0%, transparent 65%)',
-              'radial-gradient(ellipse at 15% 50%, rgba(245,158,11,0.09) 0%, transparent 65%)',
-            ] }}
-            transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }} />
-          <div className="relative z-10 h-full flex flex-col justify-between p-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full"
-                style={{ background: 'rgba(245,158,11,0.14)', border: '1px solid rgba(245,158,11,0.28)' }}>
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span className="text-amber-400 text-[11px] font-black uppercase tracking-wider">Creating Your Story</span>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-white font-black text-xl mb-1 leading-tight">{job.title || 'Your Story'}</h3>
-              <p className="text-white/45 text-xs mb-3">
-                {[job.theme && cap(job.theme), job.tone && cap(job.tone)].filter(Boolean).join(' · ')}
-              </p>
-              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.11)' }}>
-                <motion.div className="h-full rounded-full" style={{ background: 'linear-gradient(90deg,#F59E0B,#EF4444)' }}
-                  initial={{ width: '8%' }} animate={{ width: `${meta.pct}%` }}
-                  transition={{ duration: 2.4, ease: 'easeOut' }} />
-              </div>
-              <div className="flex justify-between mt-1.5">
-                <span className="text-white/30 text-[10px]">{meta.label}…</span>
-                <span className="text-amber-400 text-[10px] font-bold">{meta.pct}%</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Link>
-    </div>
+    <InProgressCard
+      thumb={thumb}
+      title={title}
+      subtitle={subtitle || undefined}
+      percent={meta.pct}
+      stage={meta.label}
+      steps={steps}
+      href={`/player/${job.job_id}`}
+    />
   );
 }
 
@@ -960,7 +875,7 @@ function Top10Row({ shows }: { shows: Show[] }) {
           className="flex overflow-x-auto px-8 md:px-16"
           style={{ scrollbarWidth: 'none' }}>
           {top.map((show, rank) => (
-            <motion.div key={show.id} className="relative flex-shrink-0 cursor-pointer group" style={{ width: 200 }}
+            <motion.div key={show.id} className="relative flex-shrink-0 cursor-pointer group" style={{ width: 276 }}
               onClick={() => open(show)}
               whileHover={{ scale: 1.04, zIndex: 20 }} transition={{ duration: 0.2 }}>
               <div className="absolute left-0 bottom-0 z-10 font-black select-none leading-none pointer-events-none"
@@ -981,7 +896,7 @@ function Top10Row({ shows }: { shows: Show[] }) {
                     style={{ background: '#F59E0B', letterSpacing: '0.05em' }}>#{rank + 1}</span>
                 </div>
                 <div className="absolute bottom-0 left-0 right-0 px-2.5 pb-2">
-                  <p className="text-white font-semibold text-[10px] truncate leading-tight">{show.title}</p>
+                  <p className="text-white font-semibold text-xs truncate leading-tight">{show.title}</p>
                 </div>
               </div>
             </motion.div>
@@ -1094,6 +1009,70 @@ function SearchOverlay({ shows, onClose }: { shows: Show[]; onClose: () => void 
   );
 }
 
+// ─── Empty / signed-out state ─────────────────────────────────────────────────
+function EmptyState({ mode }: { mode: 'signed-out' | 'empty' }) {
+  const signedOut = mode === 'signed-out';
+  return (
+    <div className="min-h-screen -mt-16 flex flex-col items-center justify-center text-center px-6"
+      style={{ background: 'radial-gradient(ellipse 70% 60% at 50% 35%, rgba(124,58,237,0.18) 0%, transparent 70%), #080808', fontFamily: 'var(--font-nunito), sans-serif' }}>
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
+        className="flex flex-col items-center">
+        <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6"
+          style={{ background: 'linear-gradient(135deg, #7c3aed55, #4f46e522)', border: '1px solid #7c3aed55', boxShadow: '0 0 30px #7c3aed40' }}>
+          <Sparkles className="w-7 h-7 text-amber-400" />
+        </div>
+        <h1 className="text-white font-black mb-3" style={{ fontSize: 'clamp(28px,4vw,44px)' }}>
+          {signedOut ? 'Your stories live here' : 'Create your first story'}
+        </h1>
+        <p className="text-white/50 text-sm sm:text-base max-w-md mb-8 leading-relaxed">
+          {signedOut
+            ? 'Sign in to see the personalised animated bedtime stories made in your own voice.'
+            : 'Record your voice once and we’ll turn your ideas into animated bedtime stories — playing back in your voice.'}
+        </p>
+        <Link href={signedOut ? '/auth/login?redirect=/home3' : '/generate'}>
+          <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
+            className="flex items-center gap-2 px-7 py-3.5 rounded-xl font-black text-sm text-white cursor-pointer"
+            style={signedOut
+              ? { background: '#E50914', boxShadow: '0 8px 24px rgba(229,9,20,0.4)' }
+              : { background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', boxShadow: '0 0 24px rgba(124,58,237,0.45)' }}>
+            {signedOut ? <LogIn className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
+            {signedOut ? 'Sign In' : 'Create Story'}
+          </motion.div>
+        </Link>
+      </motion.div>
+    </div>
+  );
+}
+
+// Build the rail rows purely from the user's completed library.
+const ROW_ACCENTS = ['#C2410C', '#1565C0', '#6D28D9', '#065F46'];
+
+function buildRows(library: Show[]): Row[] {
+  if (library.length === 0) return [];
+  const rows: Row[] = [
+    { label: 'New Releases', subtitle: 'Your latest stories', badgeType: 'new', accentColor: '#E50914', shows: library.slice(0, 12) },
+  ];
+  // One rail per distinct theme/genre (capped), filled from real stories.
+  const byTheme = new Map<string, Show[]>();
+  for (const s of library) {
+    const key = s.genres[0] || 'Story';
+    const list = byTheme.get(key);
+    if (list) list.push(s);
+    else byTheme.set(key, [s]);
+  }
+  let i = 0;
+  for (const [theme, shows] of byTheme) {
+    rows.push({
+      label: theme,
+      subtitle: `${shows.length} ${shows.length === 1 ? 'story' : 'stories'}`,
+      accentColor: ROW_ACCENTS[i % ROW_ACCENTS.length],
+      shows,
+    });
+    if (++i >= 4) break;
+  }
+  return rows;
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function Home3Page() {
   const router = useRouter();
@@ -1103,7 +1082,7 @@ export default function Home3Page() {
   const { list: watchlist, toggle: toggleWatchlist } = useWatchlist();
 
   const { user } = useAuth();
-  const { data: jobs, error } = useJobs();
+  const { data: jobs, error, isLoading } = useJobs();
 
   // Click a story: play inline if it has a video, otherwise show its status page.
   const openShow = (show: Show) => {
@@ -1111,42 +1090,40 @@ export default function Home3Page() {
     else router.push(`/player/${show.id}`);
   };
 
-  // Real stories → Show shape, newest first.
-  const realShows = (jobs ?? []).map(jobToShow);
-  const hasReal = realShows.length > 0;
-  const demoMode = !hasReal;
-  const notSignedIn = isUnauthorized(error) || (!user && !jobs);
-
-  // The catalogue everything renders from.
-  const pool = hasReal ? realShows : DEMO_SHOWS;
-
-  // Hero: use real stories only once they have a playable video; otherwise keep
-  // the original demo video hero so the page looks the same as before.
-  const playableReal = realShows.filter((s) => s.video);
-  const heroSlides =
-    playableReal.length > 0
-      ? playableReal.slice(0, 4)
-      : [DEMO_SHOWS[0], DEMO_SHOWS[1], DEMO_SHOWS[2], DEMO_SHOWS[4]];
-
-  // Fill the original themed rows with real stories (cycled) when available,
-  // so the rich layout is preserved but the cards reflect the user's library.
-  const rowShows = (ids: string[], rowIdx: number): Show[] =>
-    hasReal
-      ? ids.map((_, i) => pool[(rowIdx * 3 + i) % pool.length])
-      : ids.map((id) => DEMO_SHOWS.find((s) => s.id === id) ?? DEMO_SHOWS[0]);
-
-  // Continue watching: completed real stories (demo list when in demo mode).
-  const continueItems: ProgressShow[] = hasReal
-    ? realShows
-        .filter((s) => s.jobStatus === 'complete')
-        .slice(0, 6)
-        .map((s, i) => ({ ...s, watchedPercent: [25, 55, 80, 40, 65, 15][i % 6], minutesLeft: 0 }))
-    : DEMO_CONTINUE;
-
-  // First in-progress real job, if any.
+  // Everything below is derived from the user's real stories — no demo content.
+  const allShows = (jobs ?? []).map(jobToShow);
+  const library = allShows.filter((s) => s.jobStatus === 'complete'); // playable
+  const inProgressShows = allShows.filter(
+    (s) => s.jobStatus && s.jobStatus !== 'complete' && s.jobStatus !== 'failed'
+  );
   const inProgressJob = (jobs ?? []).find(
     (j) => j.status !== 'complete' && j.status !== 'failed'
   );
+
+  const notSignedIn = isUnauthorized(error) || (!user && !jobs);
+  const hasStories = allShows.length > 0;
+
+  // ── Nothing to show: loading spinner, then sign-in / first-story prompts ────
+  if (isLoading && !jobs) {
+    return (
+      <div className="min-h-screen -mt-16 flex items-center justify-center" style={{ background: '#080808' }}>
+        <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
+      </div>
+    );
+  }
+  if (!hasStories) {
+    return <EmptyState mode={notSignedIn ? 'signed-out' : 'empty'} />;
+  }
+
+  // Hero: playable stories first; if none are ready yet, show the latest as art.
+  const heroSlides = (library.length ? library : allShows).slice(0, 5);
+
+  // Continue watching: completed stories.
+  const continueItems: ProgressShow[] = library
+    .slice(0, 6)
+    .map((s, i) => ({ ...s, watchedPercent: [25, 55, 80, 40, 65, 15][i % 6], minutesLeft: 0 }));
+
+  const rows = buildRows(library);
 
   return (
     <OpenPlayerCtx.Provider value={openShow}>
@@ -1159,38 +1136,29 @@ export default function Home3Page() {
       <HeroSection slides={heroSlides} muted={muted} setMuted={setMuted} />
 
       <div className="relative z-10" style={{ marginTop: -80 }}>
-        {/* Sign-in nudge while browsing demo content unauthenticated */}
-        {notSignedIn && (
-          <div className="px-8 md:px-16 mb-8">
-            <div className="flex items-center justify-between gap-4 rounded-xl px-5 py-3.5"
-              style={{ background: 'rgba(124,58,237,0.10)', border: '1px solid rgba(124,58,237,0.22)' }}>
-              <p className="text-white/65 text-sm">
-                You’re browsing sample stories. Sign in to see and create your own.
-              </p>
-              <Link href="/auth/login?redirect=/home3"
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-black text-white flex-shrink-0"
-                style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }}>
-                <LogIn className="w-3.5 h-3.5" />
-                Sign In
-              </Link>
-            </div>
-          </div>
-        )}
+        {/* Detailed "creating your story" card for the most recent in-progress job */}
+        {inProgressJob && <RealInProgressSection job={inProgressJob} />}
 
-        {inProgressJob
-          ? <RealInProgressSection job={inProgressJob} />
-          : demoMode && <DemoInProgressSection />}
+        {/* In-progress stories as a rail of cards */}
+        <ContentRow
+          label="In Progress"
+          subtitle="Stories being created right now"
+          shows={inProgressShows}
+          accentColor="#F59E0B"
+          watchlist={watchlist}
+          onToggle={toggleWatchlist}
+        />
 
         <ContinueWatchingRow items={continueItems} />
 
         <CreateStoryBanner />
 
-        {DEMO_ROWS.map((row, idx) => (
+        {rows.map((row) => (
           <ContentRow
             key={row.label}
             label={row.label}
             subtitle={row.subtitle}
-            shows={rowShows(row.ids, idx)}
+            shows={row.shows}
             badgeType={row.badgeType}
             accentColor={row.accentColor}
             watchlist={watchlist}
@@ -1198,19 +1166,21 @@ export default function Home3Page() {
           />
         ))}
 
-        <Top10Row shows={pool} />
-        <Billboard show={pool[0]} />
+        <Top10Row shows={library} />
+        {library.length > 0 && <Billboard show={library[0]} />}
 
-        <ContentRow
-          label="Personalised For You"
-          subtitle="Handpicked for your family"
-          shows={pool.slice().reverse()}
-          portrait
-          watchlist={watchlist}
-          onToggle={toggleWatchlist}
-        />
+        {library.length > 0 && (
+          <ContentRow
+            label="Personalised For You"
+            subtitle="Handpicked for your family"
+            shows={library.slice().reverse()}
+            portrait
+            watchlist={watchlist}
+            onToggle={toggleWatchlist}
+          />
+        )}
 
-        <MyListRow shows={pool} watchlist={watchlist} onToggle={toggleWatchlist} />
+        <MyListRow shows={library} watchlist={watchlist} onToggle={toggleWatchlist} />
 
         <footer className="px-8 md:px-16 py-12 border-t border-white/[0.05]">
           <div className="flex items-center gap-1 mb-6">
@@ -1236,7 +1206,7 @@ export default function Home3Page() {
       </div>
 
       <AnimatePresence>
-        {searchOpen && <SearchOverlay shows={pool} onClose={() => setSearchOpen(false)} />}
+        {searchOpen && <SearchOverlay shows={library} onClose={() => setSearchOpen(false)} />}
       </AnimatePresence>
 
       <AnimatePresence>
