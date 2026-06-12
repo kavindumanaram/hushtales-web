@@ -1,13 +1,17 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { COGNITO_CLIENT_ID } from '@/lib/constants';
 
 // Routes that require an authenticated session.
 const PROTECTED_PREFIXES = ['/generate', '/voice', '/player'];
 
 // Amplify v6 (with cookieStorage) writes a cookie named
 // `CognitoIdentityServiceProvider.<clientId>.LastAuthUser` once signed in.
-const CLIENT_ID = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID ?? '';
-const LAST_AUTH_USER_COOKIE = `CognitoIdentityServiceProvider.${CLIENT_ID}.LastAuthUser`;
+// Use the shared constant (which carries a hardcoded fallback) rather than
+// reading the env var directly — Amplify builds may not have NEXT_PUBLIC_* set,
+// and an empty client id here produces a cookie name that can never match,
+// bouncing every signed-in user back to login in a redirect loop.
+const LAST_AUTH_USER_COOKIE = `CognitoIdentityServiceProvider.${COGNITO_CLIENT_ID}.LastAuthUser`;
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
