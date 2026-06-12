@@ -33,7 +33,9 @@ export default function RootLayout({
         <Providers>
           <Navbar />
           {/* pt-16 offsets the fixed navbar; full-screen hero pages use negative margin to reclaim it */}
-          <main className="flex-1 pt-16">{children}</main>
+          <main className="flex-1 pt-16">
+            <AuthGuard>{children}</AuthGuard>
+          </main>
         </Providers>
       </body>
     </html>
