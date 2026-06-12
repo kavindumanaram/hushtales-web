@@ -11,9 +11,16 @@ import {
   getCurrentUser as amplifyGetCurrentUser,
   type AuthUser,
 } from 'aws-amplify/auth';
+import { configureAmplify } from './amplify-config';
+
+// Guarantee Amplify is configured before any Cognito call, regardless of
+// component/module load order in the production bundle. configureAmplify() is
+// idempotent, so calling it here and in providers.tsx is safe.
+configureAmplify();
 
 /** Returns the Cognito ID token JWT, or null if not authenticated. */
 export async function getIdToken(): Promise<string | null> {
+  configureAmplify();
   try {
     const session = await fetchAuthSession();
     return session.tokens?.idToken?.toString() ?? null;
@@ -35,6 +42,7 @@ async function attemptSignIn(
   password: string,
   authFlowType?: AuthFlow
 ): Promise<SignInResult> {
+  configureAmplify();
   const res = await signIn({
     username: email,
     password,
@@ -75,6 +83,7 @@ export async function signInWithPassword(
 }
 
 export async function registerWithPassword(email: string, password: string) {
+  configureAmplify();
   const res = await signUp({
     username: email,
     password,
@@ -98,6 +107,7 @@ export async function signOut(): Promise<void> {
 
 /** Returns the current Cognito user, or null if not signed in. */
 export async function getCurrentUser(): Promise<AuthUser | null> {
+  configureAmplify();
   try {
     return await amplifyGetCurrentUser();
   } catch {
