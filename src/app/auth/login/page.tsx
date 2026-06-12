@@ -14,7 +14,7 @@ import {
   resendConfirmationCode,
 } from '@/lib/auth';
 
-const AMBER = '#F59E0B';
+const AMBER = '#a78bfa';
 const VIOLET = '#7c3aed';
 const NETFLIX_RED = '#E50914';
 
@@ -111,7 +111,7 @@ function LoginInner() {
   if (checking) {
     return (
       <div className="flex items-center justify-center min-h-screen" style={{ background: '#080808' }}>
-        <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
+        <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
       </div>
     );
   }
@@ -269,7 +269,7 @@ export default function LoginPage() {
     <Suspense
       fallback={
         <div className="flex items-center justify-center min-h-screen" style={{ background: '#080808' }}>
-          <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
+          <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
         </div>
       }
     >

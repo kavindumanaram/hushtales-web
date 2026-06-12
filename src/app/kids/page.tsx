@@ -17,8 +17,8 @@ const KEYFRAMES = `
     55%      { transform: translateY(18px) rotate(-6deg) scale(0.94); }
   }
   @keyframes playGlow {
-    0%,100% { box-shadow: 0 0 12px 3px rgba(245,183,49,0.55); }
-    50%      { box-shadow: 0 0 30px 10px rgba(245,183,49,0.85); }
+    0%,100% { box-shadow: 0 0 12px 3px rgba(168,85,247,0.55); }
+    50%      { box-shadow: 0 0 30px 10px rgba(168,85,247,0.85); }
   }
 `;
 
@@ -57,7 +57,7 @@ type Story = {
 };
 
 const STORIES: Story[] = [
-  { id: 's1',  title: "Barnaby's Glowing Adventure", coverImg: POSTERS[0], themeBg: THEME_BG[0], duration: '24 min', ageMin: 2, badge: '⭐ Top Pick', badgeBg: '#F5B731', emoji: '🐰', category: 'fantasy', progress: 72 },
+  { id: 's1',  title: "Barnaby's Glowing Adventure", coverImg: POSTERS[0], themeBg: THEME_BG[0], duration: '24 min', ageMin: 2, badge: '⭐ Top Pick', badgeBg: '#a855f7', emoji: '🐰', category: 'fantasy', progress: 72 },
   { id: 's2',  title: "Barnaby's Quest",             coverImg: POSTERS[1], themeBg: THEME_BG[1], duration: '22 min', ageMin: 3, badge: '🔥 Hot',     badgeBg: '#ef4444', emoji: '🌙', category: 'fantasy', progress: 45 },
   { id: 's3',  title: 'The Luna Kingdom',            coverImg: POSTERS[2], themeBg: THEME_BG[2], duration: '26 min', ageMin: 4,                                          emoji: '🏰', category: 'fantasy' },
   { id: 's4',  title: 'The Magical Seas',            coverImg: POSTERS[3], themeBg: THEME_BG[3], duration: '28 min', ageMin: 3, badge: '✨ New',     badgeBg: '#22c55e', emoji: '🚢', category: 'adventure' },
@@ -65,9 +65,9 @@ const STORIES: Story[] = [
   { id: 's6',  title: "Aetheria's Skies",            coverImg: POSTERS[5], themeBg: THEME_BG[5], duration: '30 min', ageMin: 5, badge: '🏆 #1',      badgeBg: '#a855f7', emoji: '🐉', category: 'fantasy' },
   { id: 's7',  title: 'Daisy in the Gum Trees',      coverImg: BANNERS[1], themeBg: THEME_BG[2], duration: '22 min', ageMin: 2, badge: '✨ New',     badgeBg: '#22c55e', emoji: '🌿', category: 'nature' },
   { id: 's8',  title: 'Little Kangaroo Family',      coverImg: BANNERS[2], themeBg: THEME_BG[3], duration: '18 min', ageMin: 2,                                          emoji: '🦘', category: 'nature' },
-  { id: 's9',  title: 'Moonlit Dreamer',             coverImg: BANNERS[3], themeBg: THEME_BG[0], duration: '20 min', ageMin: 0, badge: '💛 For You', badgeBg: '#f59e0b', emoji: '🌙', category: 'nature' },
+  { id: 's9',  title: 'Moonlit Dreamer',             coverImg: BANNERS[3], themeBg: THEME_BG[0], duration: '20 min', ageMin: 0, badge: '💛 For You', badgeBg: '#a855f7', emoji: '🌙', category: 'nature' },
   { id: 's10', title: 'The Kookaburra Song',         coverImg: BANNERS[4], themeBg: THEME_BG[1], duration: '22 min', ageMin: 2,                                          emoji: '🐦', category: 'nature' },
-  { id: 's11', title: 'The Moonlight Explorer',      coverImg: BANNERS[5], themeBg: THEME_BG[5], duration: '28 min', ageMin: 3, badge: '⭐ Top Pick', badgeBg: '#F5B731', emoji: '🐘', category: 'adventure' },
+  { id: 's11', title: 'The Moonlight Explorer',      coverImg: BANNERS[5], themeBg: THEME_BG[5], duration: '28 min', ageMin: 3, badge: '⭐ Top Pick', badgeBg: '#a855f7', emoji: '🐘', category: 'adventure' },
   { id: 's12', title: 'Daisy Meets Max Koala',       coverImg: BANNERS[0], themeBg: THEME_BG[2], duration: '18 min', ageMin: 2,                                          emoji: '🐨', category: 'nature' },
 ];
 
@@ -190,7 +190,7 @@ function LandscapeCard({ story, index = 0, liked, onLike }: { story: Story; inde
       {/* Top row */}
       <div style={{ position: 'absolute', top: 10, left: 10, right: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         {story.badge && (
-          <span style={{ padding: '3px 9px', borderRadius: 99, fontSize: 10, fontWeight: 800, background: story.badgeBg, color: story.badgeBg === '#F5B731' ? '#1a0e00' : '#fff' }}>
+          <span style={{ padding: '3px 9px', borderRadius: 99, fontSize: 10, fontWeight: 800, background: story.badgeBg, color: story.badgeBg === '#a855f7' ? '#ffffff' : '#fff' }}>
             {story.badge}
           </span>
         )}
@@ -205,7 +205,7 @@ function LandscapeCard({ story, index = 0, liked, onLike }: { story: Story; inde
           {story.progress !== undefined && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 4 }}>
               <div style={{ flex: 1, height: 3, borderRadius: 99, background: 'rgba(255,255,255,0.2)' }}>
-                <div style={{ width: `${story.progress}%`, height: '100%', borderRadius: 99, background: 'linear-gradient(90deg,#F5B731,#D4950A)' }} />
+                <div style={{ width: `${story.progress}%`, height: '100%', borderRadius: 99, background: 'linear-gradient(90deg,#a855f7,#7c3aed)' }} />
               </div>
               <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 9, fontWeight: 600 }}>{story.progress}%</span>
             </div>
@@ -221,12 +221,12 @@ function LandscapeCard({ story, index = 0, liked, onLike }: { story: Story; inde
         </div>
         <div style={{
           width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
-          background: 'linear-gradient(135deg,#F5B731,#D4950A)',
+          background: 'linear-gradient(135deg,#a855f7,#7c3aed)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 4px 14px rgba(245,183,49,0.6)',
+          boxShadow: '0 4px 14px rgba(168,85,247,0.6)',
           animation: 'playGlow 2.5s ease-in-out infinite',
         }}>
-          <Play style={{ width: 14, height: 14, fill: '#1a0e00', color: '#1a0e00', marginLeft: 2 }} />
+          <Play style={{ width: 14, height: 14, fill: '#ffffff', color: '#ffffff', marginLeft: 2 }} />
         </div>
       </div>
     </motion.div>
@@ -259,7 +259,7 @@ function SquareCard({ story, index = 0, liked, onLike }: { story: Story; index?:
 
       {story.badge && (
         <div style={{ position: 'absolute', top: 8, left: 8 }}>
-          <span style={{ padding: '2px 7px', borderRadius: 99, fontSize: 9, fontWeight: 800, background: story.badgeBg, color: story.badgeBg === '#F5B731' ? '#1a0e00' : '#fff' }}>
+          <span style={{ padding: '2px 7px', borderRadius: 99, fontSize: 9, fontWeight: 800, background: story.badgeBg, color: story.badgeBg === '#a855f7' ? '#ffffff' : '#fff' }}>
             {story.badge}
           </span>
         </div>
@@ -278,8 +278,8 @@ function SquareCard({ story, index = 0, liked, onLike }: { story: Story; index?:
             <Clock style={{ width: 8, height: 8 }} />{story.duration}
           </span>
         </div>
-        <div style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg,#F5B731,#D4950A)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 3px 10px rgba(245,183,49,0.55)' }}>
-          <Play style={{ width: 11, height: 11, fill: '#1a0e00', color: '#1a0e00', marginLeft: 1 }} />
+        <div style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, background: 'linear-gradient(135deg,#a855f7,#7c3aed)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 3px 10px rgba(168,85,247,0.55)' }}>
+          <Play style={{ width: 11, height: 11, fill: '#ffffff', color: '#ffffff', marginLeft: 1 }} />
         </div>
       </div>
     </motion.div>
@@ -293,7 +293,7 @@ function HeroBanner() {
       {/* Glow orbs */}
       <div style={{ position: 'absolute', top: '-15%', right: '-5%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle,rgba(124,58,237,0.45) 0%,transparent 70%)', pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', bottom: '-25%', left: '3%',  width: 240, height: 240, borderRadius: '50%', background: 'radial-gradient(circle,rgba(6,182,212,0.30) 0%,transparent 70%)',    pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', top: '30%',   left: '40%',  width: 180, height: 180, borderRadius: '50%', background: 'radial-gradient(circle,rgba(245,183,49,0.18) 0%,transparent 70%)',   pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', top: '30%',   left: '40%',  width: 180, height: 180, borderRadius: '50%', background: 'radial-gradient(circle,rgba(168,85,247,0.18) 0%,transparent 70%)',   pointerEvents: 'none' }} />
 
       {/* Floating emojis */}
       {[
@@ -312,10 +312,10 @@ function HeroBanner() {
       <div className="relative z-10 px-6 py-8" style={{ paddingBottom: 52 }}>
         {/* Label */}
         <div className="flex items-center gap-2 mb-4">
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'rgba(245,183,49,0.15)', border: '1px solid rgba(245,183,49,0.35)' }}>
-            <Sparkles className="w-4 h-4" style={{ color: '#F5B731' }} />
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: 'rgba(168,85,247,0.15)', border: '1px solid rgba(168,85,247,0.35)' }}>
+            <Sparkles className="w-4 h-4" style={{ color: '#a855f7' }} />
           </div>
-          <span className="text-xs font-black uppercase tracking-widest" style={{ color: 'rgba(245,183,49,0.85)' }}>✦ Kids Zone</span>
+          <span className="text-xs font-black uppercase tracking-widest" style={{ color: 'rgba(168,85,247,0.85)' }}>✦ Kids Zone</span>
         </div>
 
         <h1 className="text-white font-black mb-2" style={{ fontSize: 'clamp(26px,5vw,40px)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
@@ -327,8 +327,8 @@ function HeroBanner() {
 
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <motion.button whileTap={{ scale: 0.93 }}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', borderRadius: 99, background: 'linear-gradient(135deg,#F5B731,#D4950A)', color: '#1a0e00', fontWeight: 900, fontSize: 14, border: 'none', cursor: 'pointer', animation: 'playGlow 2.4s ease-in-out infinite' }}>
-            <Play style={{ width: 15, height: 15, fill: '#1a0e00' }} />
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 24px', borderRadius: 99, background: 'linear-gradient(135deg,#a855f7,#7c3aed)', color: '#ffffff', fontWeight: 900, fontSize: 14, border: 'none', cursor: 'pointer', animation: 'playGlow 2.4s ease-in-out infinite' }}>
+            <Play style={{ width: 15, height: 15, fill: '#ffffff' }} />
             Start Watching
           </motion.button>
           <Link href="/generate">
@@ -406,16 +406,16 @@ export default function KidsZonePage() {
                   width: 66, height: 66, borderRadius: '50%',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28,
                   background: CIRCLE_GRADIENTS[idx % CIRCLE_GRADIENTS.length],
-                  border: isActive ? '3px solid #F5B731' : '2.5px solid rgba(255,255,255,0.08)',
-                  boxShadow: isActive ? '0 0 0 2px rgba(245,183,49,0.25), 0 8px 24px rgba(0,0,0,0.28)' : '0 4px 16px rgba(0,0,0,0.20)',
+                  border: isActive ? '3px solid #a855f7' : '2.5px solid rgba(255,255,255,0.08)',
+                  boxShadow: isActive ? '0 0 0 2px rgba(168,85,247,0.25), 0 8px 24px rgba(0,0,0,0.28)' : '0 4px 16px rgba(0,0,0,0.20)',
                   transition: 'all 0.2s ease', position: 'relative',
                 }}>
                   {emoji}
                   {isActive && (
-                    <span style={{ position: 'absolute', bottom: -2, right: -2, width: 18, height: 18, borderRadius: '50%', background: '#F5B731', border: '2px solid #fbf8ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 900, color: '#1a0e00' }}>✓</span>
+                    <span style={{ position: 'absolute', bottom: -2, right: -2, width: 18, height: 18, borderRadius: '50%', background: '#a855f7', border: '2px solid #fbf8ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 900, color: '#ffffff' }}>✓</span>
                   )}
                 </div>
-                <span style={{ fontSize: 11, fontWeight: isActive ? 800 : 500, color: isActive ? '#D4950A' : '#6B7280' }}>{label}</span>
+                <span style={{ fontSize: 11, fontWeight: isActive ? 800 : 500, color: isActive ? '#7c3aed' : '#6B7280' }}>{label}</span>
               </motion.button>
             );
           })}
@@ -515,18 +515,18 @@ export default function KidsZonePage() {
         {/* Parent CTA */}
         <section style={{ margin: '8px 20px 0', borderRadius: 24, overflow: 'hidden', background: 'linear-gradient(135deg,#0F0E23,#1e1b4b,#2e1065)' }}>
           <div style={{ position: 'relative', padding: '28px 28px' }}>
-            <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 80% 50%,rgba(245,183,49,0.18) 0%,transparent 60%)', pointerEvents: 'none' }} />
-            <p className="font-black uppercase tracking-widest text-xs mb-2" style={{ color: '#F5B731' }}>For Mums & Dads 👨‍👩‍👧</p>
+            <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 80% 50%,rgba(168,85,247,0.18) 0%,transparent 60%)', pointerEvents: 'none' }} />
+            <p className="font-black uppercase tracking-widest text-xs mb-2" style={{ color: '#a855f7' }}>For Mums & Dads 👨‍👩‍👧</p>
             <h3 className="text-white font-black text-2xl leading-tight mb-2">
               Create a story<br />
-              <span style={{ color: '#F5B731' }}>in your voice 🎙️</span>
+              <span style={{ color: '#a855f7' }}>in your voice 🎙️</span>
             </h3>
             <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: 13, marginBottom: 20, maxWidth: 280 }}>
               Record once — HushTales AI turns it into a personalised animated bedtime story your little one will love.
             </p>
             <Link href="/generate">
               <motion.button whileTap={{ scale: 0.95 }}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 28px', borderRadius: 99, background: 'linear-gradient(135deg,#F5B731,#D4950A)', color: '#1a0e00', fontWeight: 900, fontSize: 14, border: 'none', cursor: 'pointer', boxShadow: '0 8px 28px rgba(245,183,49,0.4)', animation: 'playGlow 2.5s ease-in-out infinite' }}>
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 28px', borderRadius: 99, background: 'linear-gradient(135deg,#a855f7,#7c3aed)', color: '#ffffff', fontWeight: 900, fontSize: 14, border: 'none', cursor: 'pointer', boxShadow: '0 8px 28px rgba(168,85,247,0.4)', animation: 'playGlow 2.5s ease-in-out infinite' }}>
                 <Sparkles style={{ width: 16, height: 16 }} />
                 Start Creating 🎉
               </motion.button>

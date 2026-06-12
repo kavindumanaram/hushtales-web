@@ -25,7 +25,10 @@ Community members can share and discover public stories.
 
 Think Netflix meets a warm children's book.
 Dark background (#0f0f0f) for the main app.
-Warm accent colours: amber (#F59E0B), soft cream (#FFF8F0)
+Primary colour: purple — violet (#7c3aed) for solid fills/CTAs,
+light violet (#a78bfa) for bright accents/text, vivid purple
+(#a855f7) in the Kids zone. Soft cream (#FFF8F0) for warmth.
+No yellow/amber in the theme.
 Rounded corners everywhere.
 Large thumbnails, immersive full screen video.
 Child-friendly fonts: Nunito or Poppins.

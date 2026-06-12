@@ -7,9 +7,9 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactPlayer from 'react-player';
 import {
-  Play, Plus, Info, Star, ChevronLeft, ChevronRight,
+  Play, Plus, Info, Star, ChevronLeft, ChevronRight, ChevronDown,
   Search, Volume2, VolumeX, Check, Clock,
-  Sparkles, Loader2, CheckCircle2, Wand2, LogIn, X,
+  Sparkles, Loader2, Wand2, LogIn, X, Mic, ArrowRight,
 } from 'lucide-react';
 import { useJobs } from '@/hooks/useJobs';
 import { useAuth } from '@/hooks/useAuth';
@@ -269,16 +269,6 @@ const DEMO_CONTINUE: ProgressShow[] = [
   { ...DEMO_SHOWS[0], watchedPercent: 15, minutesLeft: 24 },
 ];
 
-// In-progress status → label/progress for the real "creating" card.
-const PROGRESS_META: Record<string, { label: string; pct: number }> = {
-  pending: { label: 'Queued', pct: 12 },
-  processing: { label: 'Writing the script', pct: 30 },
-  submitted_to_heygen: { label: 'Sending to animation', pct: 50 },
-  polling: { label: 'Animating', pct: 70 },
-  ready_to_download: { label: 'Almost ready', pct: 90 },
-  downloading: { label: 'Almost ready', pct: 95 },
-};
-
 // ─── Watchlist hook ───────────────────────────────────────────────────────────
 function useWatchlist() {
   const [list, setList] = useState<Set<string>>(new Set());
@@ -287,25 +277,108 @@ function useWatchlist() {
   return { list, toggle };
 }
 
+// ─── Genre filter (hero) ──────────────────────────────────────────────────────
+// Themed dropdown (native <select> can't match the dark/amber theme). Lists the
+// genres found across the catalogue and reports the chosen one to the hero.
+function GenreSelect({ genres, value, onChange }: {
+  genres: string[];
+  value: string;
+  onChange: (g: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <motion.button
+        whileTap={{ scale: 0.97 }}
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label="Filter the hero by genre"
+        className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold text-white cursor-pointer focus:outline-none"
+        style={{ background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)' }}
+      >
+        <span className="text-white/45 text-[11px] font-black uppercase tracking-wider">Genres</span>
+        <span className="max-w-[120px] truncate">{value}</span>
+        <motion.span animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
+          <ChevronDown className="w-4 h-4 opacity-70" />
+        </motion.span>
+      </motion.button>
+
+      <AnimatePresence>
+        {open && (
+          <>
+            <div className="fixed inset-0" style={{ zIndex: 30 }} onClick={() => setOpen(false)} />
+            <motion.ul
+              role="listbox"
+              initial={{ opacity: 0, y: 6, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 4, scale: 0.97 }}
+              transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute left-0 mt-2 w-56 max-h-72 overflow-y-auto rounded-2xl py-2"
+              style={{ zIndex: 40, background: 'rgba(12,11,28,0.97)', border: '1px solid rgba(255,255,255,0.09)', boxShadow: '0 20px 48px rgba(0,0,0,0.55)', backdropFilter: 'blur(20px)' }}
+            >
+              {genres.map((g) => {
+                const active = g === value;
+                return (
+                  <li key={g} role="option" aria-selected={active}>
+                    <button
+                      onClick={() => { onChange(g); setOpen(false); }}
+                      className="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium text-left transition-colors focus:outline-none hover:bg-white/[0.06]"
+                      style={{ color: active ? '#a78bfa' : 'rgba(255,255,255,0.7)' }}
+                    >
+                      {g}
+                      {active && <Check className="w-4 h-4" />}
+                    </button>
+                  </li>
+                );
+              })}
+            </motion.ul>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // ─── Hero ─────────────────────────────────────────────────────────────────────
 function HeroSection({
-  slides, muted, setMuted,
-}: { slides: Show[]; muted: boolean; setMuted: (v: boolean) => void }) {
+  slides, allShows, processingCount, processingJobId, muted, setMuted,
+}: {
+  slides: Show[];
+  allShows: Show[];
+  processingCount: number;
+  processingJobId?: string;
+  muted: boolean;
+  setMuted: (v: boolean) => void;
+}) {
   const open = useOpenPlayer();
   const [idx, setIdx] = useState(0);
+  const [genre, setGenre] = useState('All Genres');
   const timerRef       = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeVideoRef = useRef<HTMLVideoElement | null>(null);
-  const safeIdx = idx % slides.length;
-  const slide = slides[safeIdx];
+
+  // Genres available across the catalogue, for the hero filter.
+  const genres = ['All Genres', ...Array.from(new Set(allShows.flatMap((s) => s.genres))).sort()];
+
+  // Slides the hero cycles through: the curated set by default, or every story
+  // in the chosen genre. Falls back to the curated set if the genre is empty.
+  const filtered = genre === 'All Genres' ? slides : allShows.filter((s) => s.genres.includes(genre));
+  const view = filtered.length > 0 ? filtered : slides;
+  const safeIdx = idx % view.length;
+  const slide = view[safeIdx];
+
+  // Switching genre restarts the carousel from the first matching story.
+  // Done here (not in an effect) to avoid a synchronous setState-in-effect.
+  const pickGenre = (g: string) => { setGenre(g); setIdx(0); };
 
   useEffect(() => {
     if (activeVideoRef.current) activeVideoRef.current.muted = muted;
   }, [muted]);
 
   useEffect(() => {
-    timerRef.current = setTimeout(() => setIdx(i => (i + 1) % slides.length), 9000);
+    timerRef.current = setTimeout(() => setIdx(i => (i + 1) % view.length), 9000);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [idx, slides.length]);
+  }, [idx, view.length]);
 
   const goto = (next: number) => {
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -313,7 +386,7 @@ function HeroSection({
   };
 
   return (
-    <div className="relative w-full overflow-hidden" style={{ height: '100vh', minHeight: 640 }}>
+    <div className="relative w-full overflow-hidden" style={{ height: '72vh', minHeight: 540 }}>
       <AnimatePresence mode="sync">
         {slide.video ? (
           <motion.video
@@ -344,6 +417,30 @@ function HeroSection({
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 2, background: 'linear-gradient(to right, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.55) 45%, rgba(0,0,0,0.06) 100%)' }} />
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 2, background: 'linear-gradient(to top, #080808 0%, rgba(8,8,8,0.55) 28%, transparent 60%)' }} />
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 2, background: 'linear-gradient(to bottom, rgba(8,8,8,0.38) 0%, transparent 18%)' }} />
+
+      {/* Hero toolbar — genre filter (left) + "still generating" indicator (right) */}
+      <div className="absolute top-[76px] left-8 md:left-16 right-8 md:right-16 flex items-center justify-between gap-3" style={{ zIndex: 20 }}>
+        <GenreSelect genres={genres} value={genre} onChange={pickGenre} />
+        <AnimatePresence>
+          {processingCount > 0 && (
+            <Link href={processingJobId ? `/player/${processingJobId}` : '/library'}>
+              <motion.div
+                initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                aria-label={`${processingCount} ${processingCount === 1 ? 'story' : 'stories'} still generating`}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-lg cursor-pointer"
+                style={{ background: 'rgba(167,139,250,0.14)', border: '1px solid rgba(167,139,250,0.3)', backdropFilter: 'blur(8px)' }}
+              >
+                <Loader2 className="w-3.5 h-3.5 text-violet-400 animate-spin" />
+                <span className="text-violet-300 text-xs font-bold whitespace-nowrap">
+                  {processingCount === 1 ? 'Creating your story…' : `${processingCount} stories generating…`}
+                </span>
+              </motion.div>
+            </Link>
+          )}
+        </AnimatePresence>
+      </div>
+
       <div className="relative h-full flex flex-col justify-end pb-28 px-8 md:px-16 max-w-3xl" style={{ zIndex: 10 }}>
         <AnimatePresence mode="wait">
           <motion.div key={slide.id}
@@ -382,22 +479,29 @@ function HeroSection({
                 style={{ background: 'rgba(255,255,255,0.14)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.2)' }}>
                 <Info className="w-5 h-5" />More Info
               </motion.button>
+              <Link href="/generate">
+                <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.95 }}
+                  className="flex items-center gap-2.5 px-6 py-3.5 rounded-lg font-black text-sm text-white cursor-pointer"
+                  style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', boxShadow: '0 0 24px rgba(124,58,237,0.45)' }}>
+                  <Sparkles className="w-5 h-5" />Create Story
+                </motion.div>
+              </Link>
             </div>
           </motion.div>
         </AnimatePresence>
       </div>
       <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex items-center gap-2" style={{ zIndex: 10 }}>
-        {slides.map((s, i) => (
+        {view.map((s, i) => (
           <button key={s.id} onClick={() => goto(i)} className="rounded-full transition-all duration-300 cursor-pointer"
             style={{ width: safeIdx === i ? 32 : 8, height: 8, background: safeIdx === i ? '#ffffff' : 'rgba(255,255,255,0.32)' }} />
         ))}
       </div>
-      <button onClick={() => goto((safeIdx - 1 + slides.length) % slides.length)}
+      <button onClick={() => goto((safeIdx - 1 + view.length) % view.length)}
         className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer"
         style={{ zIndex: 10, background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.18)' }}>
         <ChevronLeft className="w-5 h-5 text-white" />
       </button>
-      <button onClick={() => goto((safeIdx + 1) % slides.length)}
+      <button onClick={() => goto((safeIdx + 1) % view.length)}
         className="absolute right-16 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer"
         style={{ zIndex: 10, background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.18)' }}>
         <ChevronRight className="w-5 h-5 text-white" />
@@ -444,7 +548,7 @@ function ShowCard({ show, watchlist, onToggle, badge }: {
       {inProgress && !hovered && (
         <div className="absolute top-2 left-2 z-10">
           <span className="inline-flex items-center gap-1 text-[9px] font-black tracking-widest text-white px-[6px] py-[3px] rounded-[3px]"
-            style={{ background: '#F59E0B' }}>
+            style={{ background: '#7c3aed' }}>
             <Loader2 className="w-2.5 h-2.5 animate-spin" />
             CREATING
           </span>
@@ -499,8 +603,8 @@ function ShowCard({ show, watchlist, onToggle, badge }: {
                   {inList ? <Check className="w-4 h-4 text-white" /> : <Plus className="w-4 h-4 text-white" />}
                 </button>
                 <div className="ml-auto flex items-center gap-1">
-                  <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                  <span className="text-yellow-400 text-[10px] font-bold">{show.rating}</span>
+                  <Star className="w-3 h-3 text-violet-400 fill-violet-400" />
+                  <span className="text-violet-400 text-[10px] font-bold">{show.rating}</span>
                 </div>
               </div>
             </div>
@@ -642,167 +746,73 @@ function useScrollRow() {
   return { trackRef, canLeft, canRight, scroll, check };
 }
 
-// ─── Demo "creating" in-progress indicator (landing / no real jobs) ───────────
-const DEMO_IN_PROGRESS = {
-  title: "The Dragon's Garden",
-  childName: 'Emma',
-  theme: 'Fantasy · Adventure',
-  thumb: '/images/banners/banner4.jpeg',
-  startedAt: '2 hours ago',
-  progress: 67,
-  steps: [
-    { label: 'Story crafted', done: true },
-    { label: 'Voice generated', done: true },
-    { label: 'Rendering animation', done: false },
-  ],
-};
-
-function DemoInProgressSection() {
-  const s = DEMO_IN_PROGRESS;
-  return (
-    <div className="px-8 md:px-16 mb-10">
-      <div className="flex items-center gap-3 mb-4">
-        <motion.div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: '#F59E0B' }}
-          animate={{ opacity: [1, 0.2, 1] }} transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }} />
-        <h2 className="text-white font-bold text-lg">In Progress</h2>
-        <span className="text-white/35 text-sm">· AI is crafting your story</span>
-      </div>
-      <div className="relative rounded-xl overflow-hidden" style={{ maxWidth: 480, height: 188 }}>
-        <img src={s.thumb} alt="" className="absolute inset-0 w-full h-full object-cover"
-          style={{ objectPosition: 'center 30%', filter: 'brightness(0.28) saturate(0.55)' }} />
-        <motion.div className="absolute inset-0 pointer-events-none"
-          animate={{ background: [
-            'radial-gradient(ellipse at 15% 50%, rgba(245,158,11,0.09) 0%, transparent 65%)',
-            'radial-gradient(ellipse at 85% 50%, rgba(245,158,11,0.13) 0%, transparent 65%)',
-            'radial-gradient(ellipse at 15% 50%, rgba(245,158,11,0.09) 0%, transparent 65%)',
-          ] }}
-          transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }} />
-        <div className="relative z-10 h-full flex flex-col justify-between p-5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full"
-              style={{ background: 'rgba(245,158,11,0.14)', border: '1px solid rgba(245,158,11,0.28)' }}>
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-amber-400 text-[11px] font-black uppercase tracking-wider">Creating Your Story</span>
-            </div>
-            <span className="text-white/28 text-xs">{s.startedAt}</span>
-          </div>
-          <div>
-            <h3 className="text-white font-black text-xl mb-1 leading-tight">{s.title}</h3>
-            <p className="text-white/45 text-xs mb-3">For {s.childName} · {s.theme}</p>
-            <div className="flex items-center gap-5 mb-3">
-              {s.steps.map((step) => (
-                <div key={step.label} className="flex items-center gap-1.5">
-                  {step.done
-                    ? <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
-                    : <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.1, repeat: Infinity, ease: 'linear' }} className="flex-shrink-0">
-                        <Loader2 className="w-3.5 h-3.5 text-amber-400" />
-                      </motion.div>}
-                  <span className={`text-[11px] font-medium ${step.done ? 'text-green-400' : 'text-amber-300'}`}>{step.label}</span>
-                </div>
-              ))}
-            </div>
-            <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.11)' }}>
-              <motion.div className="h-full rounded-full" style={{ background: 'linear-gradient(90deg,#F59E0B,#EF4444)' }}
-                initial={{ width: '52%' }} animate={{ width: `${s.progress}%` }}
-                transition={{ duration: 2.8, ease: 'easeOut', delay: 0.4 }} />
-            </div>
-            <div className="flex justify-between mt-1.5">
-              <span className="text-white/30 text-[10px]">Rendering animation...</span>
-              <span className="text-amber-400 text-[10px] font-bold">{s.progress}%</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Real "creating" in-progress section ──────────────────────────────────────
-function RealInProgressSection({ job }: { job: StoryJob }) {
-  const meta = PROGRESS_META[job.status] ?? { label: 'Working on it', pct: 40 };
-  const thumb = job.thumbnail_url || BANNER_FALLBACKS[0];
-  return (
-    <div className="px-8 md:px-16 mb-10">
-      <div className="flex items-center gap-3 mb-4">
-        <motion.div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: '#F59E0B' }}
-          animate={{ opacity: [1, 0.2, 1] }} transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }} />
-        <h2 className="text-white font-bold text-lg">In Progress</h2>
-        <span className="text-white/35 text-sm">· AI is crafting your story</span>
-      </div>
-      <Link href={`/player/${job.job_id}`}>
-        <div className="relative rounded-xl overflow-hidden cursor-pointer" style={{ maxWidth: 480, height: 188 }}>
-          <img src={thumb} alt="" className="absolute inset-0 w-full h-full object-cover"
-            style={{ objectPosition: 'center 30%', filter: 'brightness(0.28) saturate(0.55)' }} />
-          <motion.div className="absolute inset-0 pointer-events-none"
-            animate={{ background: [
-              'radial-gradient(ellipse at 15% 50%, rgba(245,158,11,0.09) 0%, transparent 65%)',
-              'radial-gradient(ellipse at 85% 50%, rgba(245,158,11,0.13) 0%, transparent 65%)',
-              'radial-gradient(ellipse at 15% 50%, rgba(245,158,11,0.09) 0%, transparent 65%)',
-            ] }}
-            transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }} />
-          <div className="relative z-10 h-full flex flex-col justify-between p-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full"
-                style={{ background: 'rgba(245,158,11,0.14)', border: '1px solid rgba(245,158,11,0.28)' }}>
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span className="text-amber-400 text-[11px] font-black uppercase tracking-wider">Creating Your Story</span>
-              </div>
-            </div>
-            <div>
-              <h3 className="text-white font-black text-xl mb-1 leading-tight">{job.title || 'Your Story'}</h3>
-              <p className="text-white/45 text-xs mb-3">
-                {[job.theme && cap(job.theme), job.tone && cap(job.tone)].filter(Boolean).join(' · ')}
-              </p>
-              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.11)' }}>
-                <motion.div className="h-full rounded-full" style={{ background: 'linear-gradient(90deg,#F59E0B,#EF4444)' }}
-                  initial={{ width: '8%' }} animate={{ width: `${meta.pct}%` }}
-                  transition={{ duration: 2.4, ease: 'easeOut' }} />
-              </div>
-              <div className="flex justify-between mt-1.5">
-                <span className="text-white/30 text-[10px]">{meta.label}…</span>
-                <span className="text-amber-400 text-[10px] font-bold">{meta.pct}%</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Link>
-    </div>
-  );
-}
-
 // ─── Create Story Banner ──────────────────────────────────────────────────────
+// Steps for the "make your own" promo. Distinct from the hero's Create Story
+// CTA — this is a how-it-works moment that explains the value, not a button.
+const CREATE_STEPS: { Icon: typeof Mic; title: string; sub: string }[] = [
+  { Icon: Mic,     title: 'Record 30 seconds',  sub: 'Read a short paragraph aloud' },
+  { Icon: Wand2,   title: 'We animate it',       sub: 'Characters, scenes & motion' },
+  { Icon: Volume2, title: 'Plays in your voice', sub: 'A new bedtime favourite' },
+];
+
 function CreateStoryBanner() {
   return (
-    <div className="px-8 md:px-16 mb-10">
-      <div className="relative rounded-2xl overflow-hidden" style={{ height: 144 }}>
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(120deg, #0d0b2b 0%, #130b35 35%, #0a1f3a 65%, #0b2b1a 100%)' }} />
-        <div className="absolute -left-10 top-1/2 -translate-y-1/2 w-56 h-56 rounded-full pointer-events-none"
-          style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.18) 0%, transparent 70%)' }} />
-        <div className="absolute right-32 top-1/2 -translate-y-1/2 w-40 h-40 rounded-full pointer-events-none"
-          style={{ background: 'radial-gradient(circle, rgba(245,158,11,0.12) 0%, transparent 70%)' }} />
+    <section className="px-8 md:px-16 mb-12">
+      <div className="relative rounded-2xl overflow-hidden" style={{ border: '1px solid rgba(139,92,246,0.18)' }}>
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(120deg, #0d0b2b 0%, #130b35 38%, #0a1f3a 70%, #0b2b1a 100%)' }} />
+        <div className="absolute -left-12 -top-12 w-64 h-64 rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.20) 0%, transparent 70%)' }} />
+        <div className="absolute -right-10 -bottom-12 w-56 h-56 rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(circle, rgba(167,139,250,0.12) 0%, transparent 70%)' }} />
         <div className="absolute inset-0 pointer-events-none opacity-[0.04]"
-          style={{ backgroundImage: 'repeating-linear-gradient(0deg,#fff 0,#fff 1px,transparent 1px,transparent 32px),repeating-linear-gradient(90deg,#fff 0,#fff 1px,transparent 1px,transparent 32px)' }} />
-        <div className="absolute inset-0 rounded-2xl pointer-events-none" style={{ border: '1px solid rgba(139,92,246,0.2)' }} />
-        <div className="relative z-10 h-full flex items-center justify-between px-8 md:px-10">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Wand2 className="w-4 h-4 text-violet-400" />
-              <span className="text-violet-400 text-[11px] font-black uppercase tracking-widest">AI-Powered Storytelling</span>
+          style={{ backgroundImage: 'repeating-linear-gradient(0deg,#fff 0,#fff 1px,transparent 1px,transparent 34px),repeating-linear-gradient(90deg,#fff 0,#fff 1px,transparent 1px,transparent 34px)' }} />
+
+        <div className="relative z-10 p-6 md:p-8">
+          {/* Heading + secondary CTA */}
+          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div className="max-w-lg">
+              <div className="flex items-center gap-2 mb-2.5">
+                <Wand2 className="w-4 h-4 text-violet-400" />
+                <span className="text-violet-300 text-[11px] font-black uppercase tracking-[0.18em]">Make your own</span>
+              </div>
+              <h3 className="text-white font-black leading-tight mb-1.5" style={{ fontSize: 'clamp(20px,2.4vw,28px)' }}>
+                Turn your voice into a bedtime story
+              </h3>
+              <p className="text-white/45 text-sm">Three simple steps — about a minute of your time.</p>
             </div>
-            <h3 className="text-white font-black text-xl leading-tight mb-1">Create Your Own Story</h3>
-            <p className="text-white/45 text-sm">Record your voice once — we animate the magic.</p>
+            <Link href="/generate" className="flex-shrink-0">
+              <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-black text-sm text-white cursor-pointer"
+                style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', boxShadow: '0 0 24px rgba(124,58,237,0.45)' }}>
+                Get Started
+                <ArrowRight className="w-4 h-4" />
+              </motion.div>
+            </Link>
           </div>
-          <Link href="/generate">
-            <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
-              className="flex items-center gap-2.5 px-6 py-3 rounded-xl font-black text-sm text-white cursor-pointer flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', boxShadow: '0 0 24px rgba(124,58,237,0.45)' }}>
-              <Sparkles className="w-4 h-4" />
-              Create Story
-            </motion.div>
-          </Link>
+
+          {/* Steps */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6">
+            {CREATE_STEPS.map((s, i) => (
+              <div key={s.title}
+                className="flex items-center gap-3 rounded-xl px-4 py-3"
+                style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'rgba(124,58,237,0.16)', border: '1px solid rgba(124,58,237,0.3)' }}>
+                  <s.Icon className="w-4 h-4 text-violet-300" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-violet-400 text-[10px] font-black">{i + 1}</span>
+                    <p className="text-white text-[13px] font-bold truncate">{s.title}</p>
+                  </div>
+                  <p className="text-white/35 text-[11px] truncate">{s.sub}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -812,7 +822,7 @@ function ContinueWatchingRow({ items }: { items: ProgressShow[] }) {
   if (items.length === 0) return null;
 
   return (
-    <div className="mb-8">
+    <div className="mb-10">
       <div className="px-8 md:px-16 mb-3">
         <h2 className="text-white font-bold text-lg">Continue Watching</h2>
         <p className="text-white/35 text-xs mt-0.5">Pick up where you left off</p>
@@ -837,7 +847,7 @@ function ContinueWatchingRow({ items }: { items: ProgressShow[] }) {
           )}
         </AnimatePresence>
         <div ref={trackRef} onScroll={check}
-          className="flex gap-1 overflow-x-auto px-8 md:px-16"
+          className="flex gap-2.5 overflow-x-auto px-8 md:px-16"
           style={{ scrollbarWidth: 'none', paddingBottom: 6 }}>
           {items.map((show, i) => (
             <ContinueWatchingCard key={show.id + i} show={show} />
@@ -865,8 +875,8 @@ function ContentRow({ label, subtitle, shows, portrait = false, badgeType, accen
   if (shows.length === 0) return null;
 
   return (
-    <div className="mb-8">
-      <div className="flex items-center justify-between px-8 md:px-16 mb-3"
+    <div className="mb-10">
+      <div className="flex items-center justify-between px-8 md:px-16 mb-4"
         onMouseEnter={() => setHdrHovered(true)}
         onMouseLeave={() => setHdrHovered(false)}>
         <div>
@@ -875,7 +885,7 @@ function ContentRow({ label, subtitle, shows, portrait = false, badgeType, accen
             <h2 className="text-white font-bold text-lg leading-none">{label}</h2>
             <motion.span
               initial={false}
-              animate={{ opacity: hdrHovered ? 1 : 0, x: hdrHovered ? 0 : -5 }}
+              animate={{ opacity: hdrHovered ? 1 : 0.55, x: hdrHovered ? 3 : 0 }}
               transition={{ duration: 0.15 }}
               className="text-xs font-semibold cursor-pointer select-none"
               style={{ color: accentColor || '#4ade80' }}
@@ -907,7 +917,7 @@ function ContentRow({ label, subtitle, shows, portrait = false, badgeType, accen
           )}
         </AnimatePresence>
         <div ref={trackRef} onScroll={check}
-          className="flex gap-1 overflow-x-auto px-8 md:px-16"
+          className="flex gap-2.5 overflow-x-auto px-8 md:px-16"
           style={{ scrollbarWidth: 'none', paddingBottom: 6 }}>
           {shows.map((show, i) =>
             portrait
@@ -929,10 +939,10 @@ function Top10Row({ shows }: { shows: Show[] }) {
   if (top.length === 0) return null;
 
   return (
-    <div className="mb-8">
+    <div className="mb-10">
       <div className="px-8 md:px-16 mb-3">
         <div className="flex items-center gap-3">
-          <div className="w-[3px] h-[17px] rounded-full flex-shrink-0" style={{ background: '#F59E0B' }} />
+          <div className="w-[3px] h-[17px] rounded-full flex-shrink-0" style={{ background: '#a78bfa' }} />
           <h2 className="text-white font-bold text-lg">Top 10 in Australia Today</h2>
         </div>
         <p className="text-white/30 text-xs mt-0.5 ml-4">The stories every family is watching</p>
@@ -978,7 +988,7 @@ function Top10Row({ shows }: { shows: Show[] }) {
                 </div>
                 <div className="absolute top-2 left-2">
                   <span className="text-[9px] font-black text-white px-[6px] py-[3px] rounded-[3px]"
-                    style={{ background: '#F59E0B', letterSpacing: '0.05em' }}>#{rank + 1}</span>
+                    style={{ background: '#7c3aed', letterSpacing: '0.05em' }}>#{rank + 1}</span>
                 </div>
                 <div className="absolute bottom-0 left-0 right-0 px-2.5 pb-2">
                   <p className="text-white font-semibold text-[10px] truncate leading-tight">{show.title}</p>
@@ -1021,7 +1031,7 @@ function Billboard({ show }: { show: Show }) {
       </div>
       <div className="absolute top-6 right-8 flex items-center gap-1.5 px-3 py-1.5 rounded-full"
         style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255,255,255,0.12)' }}>
-        <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
+        <Star className="w-3.5 h-3.5 text-violet-400 fill-violet-400" />
         <span className="text-white font-bold text-xs">{show.rating}</span>
       </div>
     </div>
@@ -1033,12 +1043,12 @@ function MyListRow({ shows, watchlist, onToggle }: { shows: Show[]; watchlist: S
   const items = shows.filter(s => watchlist.has(s.id));
   if (items.length === 0) return null;
   return (
-    <div className="mb-8">
+    <div className="mb-10">
       <div className="px-8 md:px-16 mb-3">
         <h2 className="text-white font-bold text-lg">My List</h2>
         <p className="text-white/30 text-xs mt-0.5">Stories you saved to watch later</p>
       </div>
-      <div className="flex gap-1 overflow-x-auto px-8 md:px-16" style={{ scrollbarWidth: 'none' }}>
+      <div className="flex gap-2.5 overflow-x-auto px-8 md:px-16" style={{ scrollbarWidth: 'none' }}>
         {items.map(show => <PortraitCard key={show.id} show={show} watchlist={watchlist} onToggle={onToggle} />)}
       </div>
     </div>
@@ -1114,7 +1124,6 @@ export default function Home3Page() {
   // Real stories → Show shape, newest first.
   const realShows = (jobs ?? []).map(jobToShow);
   const hasReal = realShows.length > 0;
-  const demoMode = !hasReal;
   const notSignedIn = isUnauthorized(error) || (!user && !jobs);
 
   // The catalogue everything renders from.
@@ -1135,6 +1144,11 @@ export default function Home3Page() {
       ? ids.map((_, i) => pool[(rowIdx * 3 + i) % pool.length])
       : ids.map((id) => DEMO_SHOWS.find((s) => s.id === id) ?? DEMO_SHOWS[0]);
 
+  // Stories still being generated — surfaced as a live indicator on the hero.
+  const processingJobs = (jobs ?? []).filter(
+    (j) => j.status !== 'complete' && j.status !== 'failed'
+  );
+
   // Continue watching: completed real stories (demo list when in demo mode).
   const continueItems: ProgressShow[] = hasReal
     ? realShows
@@ -1142,11 +1156,6 @@ export default function Home3Page() {
         .slice(0, 6)
         .map((s, i) => ({ ...s, watchedPercent: [25, 55, 80, 40, 65, 15][i % 6], minutesLeft: 0 }))
     : DEMO_CONTINUE;
-
-  // First in-progress real job, if any.
-  const inProgressJob = (jobs ?? []).find(
-    (j) => j.status !== 'complete' && j.status !== 'failed'
-  );
 
   return (
     <OpenPlayerCtx.Provider value={openShow}>
@@ -1156,7 +1165,14 @@ export default function Home3Page() {
         <Search className="w-5 h-5" />
       </button>
 
-      <HeroSection slides={heroSlides} muted={muted} setMuted={setMuted} />
+      <HeroSection
+        slides={heroSlides}
+        allShows={pool}
+        processingCount={processingJobs.length}
+        processingJobId={processingJobs[0]?.job_id}
+        muted={muted}
+        setMuted={setMuted}
+      />
 
       <div className="relative z-10" style={{ marginTop: -80 }}>
         {/* Sign-in nudge while browsing demo content unauthenticated */}
@@ -1176,10 +1192,6 @@ export default function Home3Page() {
             </div>
           </div>
         )}
-
-        {inProgressJob
-          ? <RealInProgressSection job={inProgressJob} />
-          : demoMode && <DemoInProgressSection />}
 
         <ContinueWatchingRow items={continueItems} />
 

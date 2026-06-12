@@ -11,7 +11,7 @@ import {
 import { useJobPolling } from '@/hooks/useJobs';
 import { isUnauthorized, type StoryJob } from '@/lib/api';
 
-const AMBER = '#F59E0B';
+const AMBER = '#a78bfa';
 const VIOLET = '#7c3aed';
 
 // In-progress status → human label.
@@ -57,7 +57,7 @@ export default function PlayerPage({ params }: { params: Promise<{ id: string }>
 
         {isLoading && (
           <div className="flex flex-col items-center justify-center py-32 gap-4">
-            <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
+            <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
             <p className="text-white/40 text-sm">Loading story…</p>
           </div>
         )}
@@ -173,7 +173,7 @@ function StoryMeta({ job, title, compact }: { job: StoryJob; title: string; comp
             <span
               key={t}
               className="px-2.5 py-1 rounded-full text-[11px] font-bold capitalize"
-              style={{ background: 'rgba(245,183,49,0.12)', color: AMBER, border: '1px solid rgba(245,183,49,0.22)' }}
+              style={{ background: 'rgba(167,139,250,0.12)', color: AMBER, border: '1px solid rgba(167,139,250,0.22)' }}
             >
               {t.replace(/_/g, ' ')}
             </span>

@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { BookOpen, Search, Bell, Menu, X, ChevronDown, Sparkles, LogIn, LogOut } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
-const AMBER  = '#F59E0B';
+const AMBER  = '#a78bfa';
 const VIOLET = '#7c3aed';
 
 // ─── Nav links ────────────────────────────────────────────────────────────────
@@ -29,6 +29,7 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   { label: 'Kids',     href: '/kids'     },
+  { label: 'Voice Studio', href: '/voice-studio' },
   { label: 'Profiles', href: '/profiles' },
 ];
 
@@ -118,7 +119,7 @@ export default function Navbar() {
                 <BookOpen className="w-4 h-4" style={{ color: AMBER }} />
               </div>
               <span
-                className="text-[17px] font-black tracking-tight text-white transition-colors duration-200 group-hover:text-amber-400"
+                className="text-[17px] font-black tracking-tight text-white transition-colors duration-200 group-hover:text-violet-400"
               >
                 HushTales
               </span>
@@ -361,11 +362,11 @@ export default function Navbar() {
                             Profiles
                           </Link>
                           <Link
-                            href="/voice"
+                            href="/voice-studio"
                             onClick={() => setProfileOpen(false)}
                             className="block px-4 py-2.5 text-sm font-medium text-white/60 hover:text-white hover:bg-white/[0.06] transition-all"
                           >
-                            Voice Setup
+                            Voice Studio
                           </Link>
                           <button
                             onClick={handleSignOut}

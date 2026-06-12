@@ -16,7 +16,7 @@ import {
 } from '@/hooks/useVoice';
 import { isUnauthorized, type Voice } from '@/lib/api';
 
-const AMBER = '#F59E0B';
+const AMBER = '#a78bfa';
 const VIOLET = '#7c3aed';
 
 // Map backend voice status → display.
@@ -25,9 +25,9 @@ function statusBadge(status: string): { label: string; color: string; bg: string
     case 'active':
       return { label: 'Ready', color: '#4ade80', bg: 'rgba(74,222,128,0.14)' };
     case 'cloning':
-      return { label: 'Processing', color: AMBER, bg: 'rgba(245,158,11,0.14)', spin: true };
+      return { label: 'Processing', color: AMBER, bg: 'rgba(167,139,250,0.14)', spin: true };
     case 'pending_upload':
-      return { label: 'Uploading', color: AMBER, bg: 'rgba(245,158,11,0.14)', spin: true };
+      return { label: 'Uploading', color: AMBER, bg: 'rgba(167,139,250,0.14)', spin: true };
     case 'failed':
       return { label: 'Failed', color: '#f87171', bg: 'rgba(248,113,113,0.14)' };
     default:
@@ -55,7 +55,7 @@ function VoiceCard({
       style={{
         background: 'rgba(255,255,255,0.04)',
         border: isActive ? `1.5px solid ${AMBER}55` : '1px solid rgba(255,255,255,0.08)',
-        boxShadow: isActive ? `0 0 18px rgba(245,158,11,0.12)` : 'none',
+        boxShadow: isActive ? `0 0 18px rgba(167,139,250,0.12)` : 'none',
       }}
     >
       <div
@@ -95,7 +95,7 @@ function VoiceCard({
             onClick={() => onSetActive(voice.voice_id)}
             disabled={busy}
             className="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors focus:outline-none disabled:opacity-50"
-            style={{ background: 'rgba(245,158,11,0.14)', color: AMBER }}
+            style={{ background: 'rgba(167,139,250,0.14)', color: AMBER }}
           >
             Set Active
           </button>
@@ -397,7 +397,7 @@ export default function VoicePage() {
                   style={{
                     width: 72,
                     height: 72,
-                    background: recording ? 'rgba(239,68,68,0.12)' : 'rgba(245,183,49,0.10)',
+                    background: recording ? 'rgba(239,68,68,0.12)' : 'rgba(167,139,250,0.10)',
                     border: recording ? '1.5px solid rgba(239,68,68,0.45)' : `1.5px solid ${AMBER}55`,
                   }}
                 >

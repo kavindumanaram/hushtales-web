@@ -14,7 +14,7 @@ export default function AuthCallbackPage() {
 
   return (
     <div className="flex items-center justify-center min-h-screen" style={{ background: '#080808' }}>
-      <Loader2 className="w-8 h-8 text-amber-400 animate-spin" />
+      <Loader2 className="w-8 h-8 text-violet-400 animate-spin" />
     </div>
   );
 }

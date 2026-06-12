@@ -16,7 +16,7 @@ import { useStore } from '@/lib/store';
 import { isUnauthorized } from '@/lib/api';
 
 // ─── Brand tokens (match home3 exactly) ───────────────────────────────────────
-const AMBER  = '#F59E0B';
+const AMBER  = '#a78bfa';
 const VIOLET = '#7c3aed';
 
 // ─── Stable waveform constants (no random on render) ──────────────────────────
@@ -174,9 +174,9 @@ function CharacterRow({
             <div
               className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center transition-all duration-200"
               style={{
-                background: sel ? 'rgba(245,183,49,0.14)' : 'rgba(255,255,255,0.05)',
+                background: sel ? 'rgba(167,139,250,0.14)' : 'rgba(255,255,255,0.05)',
                 border: sel ? `1.5px solid ${AMBER}` : '1.5px solid rgba(255,255,255,0.08)',
-                boxShadow: sel ? `0 0 16px rgba(245,183,49,0.22)` : 'none',
+                boxShadow: sel ? `0 0 16px rgba(167,139,250,0.22)` : 'none',
               }}
             >
               <span
@@ -221,7 +221,7 @@ function ThemeGrid({
             style={{
               height: 76,
               border: sel ? `1.5px solid ${AMBER}` : '1.5px solid rgba(255,255,255,0.07)',
-              boxShadow: sel ? `0 0 16px rgba(245,183,49,0.16)` : 'none',
+              boxShadow: sel ? `0 0 16px rgba(167,139,250,0.16)` : 'none',
             }}
           >
             <div
@@ -233,7 +233,7 @@ function ThemeGrid({
               }}
             />
             {sel && (
-              <div className="absolute inset-0" style={{ background: 'rgba(245,183,49,0.05)' }} />
+              <div className="absolute inset-0" style={{ background: 'rgba(167,139,250,0.05)' }} />
             )}
             <div
               className="absolute inset-0"
@@ -714,7 +714,7 @@ export default function GeneratePage() {
                       style={{
                         width: 72,
                         height: 72,
-                        background: recording ? 'rgba(239,68,68,0.12)' : 'rgba(245,183,49,0.10)',
+                        background: recording ? 'rgba(239,68,68,0.12)' : 'rgba(167,139,250,0.10)',
                         border: recording
                           ? '1.5px solid rgba(239,68,68,0.45)'
                           : `1.5px solid ${AMBER}55`,
@@ -1000,9 +1000,9 @@ function Chip({ children }: { children: React.ReactNode }) {
       exit={{ opacity: 0, scale: 0.8 }}
       className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap flex-shrink-0"
       style={{
-        background: 'rgba(245,183,49,0.12)',
+        background: 'rgba(167,139,250,0.12)',
         color: AMBER,
-        border: '1px solid rgba(245,183,49,0.22)',
+        border: '1px solid rgba(167,139,250,0.22)',
       }}
     >
       {children}
