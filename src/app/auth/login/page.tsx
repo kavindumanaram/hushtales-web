@@ -18,6 +18,9 @@ const AMBER = '#F59E0B';
 const VIOLET = '#7c3aed';
 const NETFLIX_RED = '#E50914';
 
+// Bump this string on each deploy to verify which bundle the live site serves.
+const BUILD_MARKER = 'build-v2-native-auth';
+
 // Prefilled dev credentials.
 const DEV_EMAIL = 'tanveerdem3@gmail.com';
 const DEV_PASSWORD = 'test1234';
@@ -215,6 +218,8 @@ function LoginInner() {
               </button>
             </p>
           )}
+
+          <p className="text-center text-white/15 text-[10px] mt-5">{BUILD_MARKER}</p>
         </motion.div>
       </div>
     </div>
