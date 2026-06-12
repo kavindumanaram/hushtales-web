@@ -460,6 +460,9 @@ function HeroSection({
               <span className="flex items-center gap-1.5 text-green-400 font-bold text-sm">
                 <Star className="w-3.5 h-3.5 fill-current" />{slide.match} Match
               </span>
+              <span className="flex items-center gap-1 text-violet-300 font-bold text-sm">
+                <Star className="w-3.5 h-3.5 fill-current" />{slide.rating}
+              </span>
               <span className="text-white/55 text-sm">{slide.year}</span>
               <span className="border border-white/25 text-white/60 text-xs px-1.5 py-0.5 rounded font-bold">PG</span>
               <span className="text-white/55 text-sm">{slide.duration}</span>
@@ -502,7 +505,7 @@ function HeroSection({
         <ChevronLeft className="w-5 h-5 text-white" />
       </button>
       <button onClick={() => goto((safeIdx + 1) % view.length)}
-        className="absolute right-16 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer"
+        className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center cursor-pointer"
         style={{ zIndex: 10, background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.18)' }}>
         <ChevronRight className="w-5 h-5 text-white" />
       </button>
@@ -513,10 +516,6 @@ function HeroSection({
           {muted ? <VolumeX className="w-4 h-4 text-white" /> : <Volume2 className="w-4 h-4 text-white" />}
         </button>
       )}
-      <div className="absolute top-1/2 -translate-y-1/2 right-8 md:right-16 flex flex-col items-center gap-0.5 border-l-4 border-white/50 pl-2.5" style={{ zIndex: 10 }}>
-        <span className="text-white font-black text-2xl">{slide.rating}</span>
-        <span className="text-white/45 text-[10px] font-semibold uppercase tracking-wider">Rating</span>
-      </div>
     </div>
   );
 }
@@ -756,6 +755,7 @@ const CREATE_STEPS: { Icon: typeof Mic; title: string; sub: string }[] = [
 ];
 
 function CreateStoryBanner() {
+  const router = useRouter();
   return (
     <section className="px-8 md:px-16 mb-12">
       <div className="relative rounded-2xl overflow-hidden" style={{ border: '1px solid rgba(139,92,246,0.18)' }}>
@@ -780,14 +780,14 @@ function CreateStoryBanner() {
               </h3>
               <p className="text-white/45 text-sm">Three simple steps — about a minute of your time.</p>
             </div>
-            <Link href="/generate" className="flex-shrink-0">
-              <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-black text-sm text-white cursor-pointer"
-                style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', boxShadow: '0 0 24px rgba(124,58,237,0.45)' }}>
-                Get Started
-                <ArrowRight className="w-4 h-4" />
-              </motion.div>
-            </Link>
+            <motion.button
+              onClick={() => router.push('/generate')}
+              whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-black text-sm text-white cursor-pointer flex-shrink-0 focus:outline-none"
+              style={{ background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', boxShadow: '0 0 24px rgba(124,58,237,0.45)' }}>
+              Get Started
+              <ArrowRight className="w-4 h-4" />
+            </motion.button>
           </div>
 
           {/* Steps */}

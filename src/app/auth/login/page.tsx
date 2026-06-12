@@ -30,8 +30,9 @@ type Mode = 'signin' | 'signup' | 'confirm';
 function LoginInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  // After a plain sign-in, show the "Who's watching?" chooser. When the user
-  // was bounced here from a protected route, return them there instead.
+  // A fresh sign-in always lands on the "Who's watching?" chooser (below).
+  // `redirect` is only used to send an already-signed-in visitor back to the
+  // protected route that bounced them here.
   const redirect = searchParams.get('redirect') ?? '/profiles';
 
   const [checking, setChecking] = useState(true);
@@ -60,7 +61,7 @@ function LoginInner() {
     setError(null);
     try {
       const res = await signInWithPassword(email.trim(), password);
-      if (res.isSignedIn) router.replace(redirect);
+      if (res.isSignedIn) router.replace('/profiles');
       else if (res.nextStep === 'CONFIRM_SIGN_UP') {
         setInfo('Please confirm your account. We sent a code to your email.');
         setMode('confirm');
@@ -80,7 +81,7 @@ function LoginInner() {
       const res = await registerWithPassword(email.trim(), password);
       if (res.isComplete) {
         const si = await signInWithPassword(email.trim(), password);
-        if (si.isSignedIn) router.replace(redirect);
+        if (si.isSignedIn) router.replace('/profiles');
       } else {
         setInfo('Account created. Enter the confirmation code sent to your email.');
         setMode('confirm');
@@ -99,7 +100,7 @@ function LoginInner() {
     try {
       await confirmRegistration(email.trim(), code.trim());
       const si = await signInWithPassword(email.trim(), password);
-      if (si.isSignedIn) router.replace(redirect);
+      if (si.isSignedIn) router.replace('/profiles');
       else { setInfo('Confirmed! You can sign in now.'); setMode('signin'); }
     } catch (e) {
       fail(e);
