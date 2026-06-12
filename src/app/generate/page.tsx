@@ -637,9 +637,9 @@ export default function GeneratePage() {
               >
                 <Mic className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: VIOLET }} />
                 <p className="text-white/55 text-xs leading-relaxed">
-                  Set up and clone your voice on the{' '}
-                  <Link href="/voice" className="font-bold underline" style={{ color: AMBER }}>
-                    Voice page
+                  Set up and clone your voice in the{' '}
+                  <Link href="/voice-studio" className="font-bold underline" style={{ color: AMBER }}>
+                    Voice Studio
                   </Link>{' '}
                   first. Once your voice is ready, AI stories you create will be narrated in it
                   automatically.

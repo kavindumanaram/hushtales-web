@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Plus } from 'lucide-react';
+import { useStore } from '@/lib/store';
 
 const AMBER  = '#F59E0B';
 const VIOLET = '#7c3aed';
@@ -24,9 +25,11 @@ const PROFILES: Profile[] = [
 
 export default function ProfilesPage() {
   const router = useRouter();
+  const setActiveProfileId = useStore((s) => s.setActiveProfileId);
   const [selecting, setSelecting] = useState<string | null>(null);
 
   function handleSelect(id: string) {
+    setActiveProfileId(id);
     setSelecting(id);
     setTimeout(() => router.push('/home3'), 850);
   }

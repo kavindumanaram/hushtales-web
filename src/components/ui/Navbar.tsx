@@ -28,6 +28,7 @@ const NAV_ITEMS: NavItem[] = [
       { label: 'Originals',       href: '/library',   tag: 'ONLY HERE' },
     ],
   },
+  { label: 'Voice',    href: '/voice-studio' },
   { label: 'Kids',     href: '/kids'     },
   { label: 'Profiles', href: '/profiles' },
 ];
@@ -361,11 +362,11 @@ export default function Navbar() {
                             Profiles
                           </Link>
                           <Link
-                            href="/voice"
+                            href="/voice-studio"
                             onClick={() => setProfileOpen(false)}
                             className="block px-4 py-2.5 text-sm font-medium text-white/60 hover:text-white hover:bg-white/[0.06] transition-all"
                           >
-                            Voice Setup
+                            Voice Studio
                           </Link>
                           <button
                             onClick={handleSignOut}
